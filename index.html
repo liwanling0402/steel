@@ -1,18 +1,62 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的第一个网页</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>钢材加工生产管理系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <div class="box">
-        <h1>Hello GitHub Pages！</h1>
-        <p>部署成功啦，不用买域名！</p>
-        <button id="btn">点我试试</button>
+<body class="bg-gray-100 text-gray-800">
+  <div class="container mx-auto px-4 py-8 max-w-5xl">
+    <h1 class="text-3xl font-bold text-center mb-8">钢材加工生产管理系统</h1>
+
+    <!-- 表单区域 -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+      <h2 class="text-xl font-semibold mb-4">新增生产计划</h2>
+      <form id="planForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="text" id="customer" placeholder="客户名称" required
+          class="border rounded px-3 py-2">
+        <input type="text" id="steelNo" placeholder="钢材编号" required
+          class="border rounded px-3 py-2">
+        <input type="number" id="weight" placeholder="重量（吨）" required
+          class="border rounded px-3 py-2">
+        <input type="number" id="quantity" placeholder="数量" required
+          class="border rounded px-3 py-2">
+        <input type="text" id="size" placeholder="尺寸（mm）" required
+          class="border rounded px-3 py-2">
+        <input type="date" id="shipDate" required
+          class="border rounded px-3 py-2">
+        <textarea id="remark" placeholder="备注" class="md:col-span-2 border rounded px-3 py-2"></textarea>
+        <button type="submit"
+          class="md:col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+          提交计划
+        </button>
+      </form>
     </div>
 
-    <script src="script.js"></script>
+    <!-- 列表区域 -->
+    <div class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-semibold mb-4">生产计划列表</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="px-2 py-2 text-left">客户</th>
+              <th class="px-2 py-2 text-left">钢材编号</th>
+              <th class="px-2 py-2 text-left">重量</th>
+              <th class="px-2 py-2 text-left">数量</th>
+              <th class="px-2 py-2 text-left">尺寸</th>
+              <th class="px-2 py-2 text-left">发货日期</th>
+              <th class="px-2 py-2 text-left">操作</th>
+            </tr>
+          </thead>
+          <tbody id="planTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
