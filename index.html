@@ -17,42 +17,66 @@
   <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.svg">
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.svg">
 
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            industrial: {
-              50: '#f0f4f8',
-              100: '#dce4ed',
-              200: '#b8c9d9',
-              300: '#8fa8c0',
-              400: '#6684a2',
-              500: '#4a6785',
-              600: '#3a526b',
-              700: '#2d4054',
-              800: '#1a2332',
-              900: '#0f1720',
-            },
-            steel: {
-              50: '#f5f7fa',
-              100: '#e4e9f0',
-              200: '#c8d2de',
-              300: '#a1b0c4',
-              400: '#7488a3',
-              500: '#546989',
-              600: '#3f5170',
-              700: '#34425b',
-              800: '#2d384d',
-              900: '#1e2533',
-            }
-          }
-        }
-      }
-    }
-  </script>
+  <!-- 内联关键布局CSS（替代Tailwind CDN，无需外部加载） -->
+  <style>
+    /* Tailwind 精简核心 */
+    *,::before,::after{box-sizing:border-box;border-width:0;border-style:solid}
+    html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4}
+    body{margin:0;line-height:inherit}
+    h1,h2,h3,h4,p{margin:0}
+    button,input,select,textarea{font-family:inherit;font-size:100%;line-height:inherit;color:inherit;margin:0;padding:0}
+    button,select{text-transform:none}
+    button{cursor:pointer}
+    [hidden]{display:none!important}
+    .flex{display:flex}.hidden{display:none}.grid{display:grid}.block{display:block}.inline-flex{display:inline-flex}
+    .flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.flex-shrink-0{flex-shrink:0}.flex-1{flex:1 1 0%}
+    .items-center{align-items:center}.items-end{align-items:end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}
+    .gap-1{gap:.25rem}.gap-2{gap:.5rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}.gap-5{gap:1.25rem}.gap-6{gap:1.5rem}
+    .gap-x-4{column-gap:1rem}.gap-y-1{row-gap:.25rem}
+    .space-x-1>*+*{margin-left:.25rem}.space-x-2>*+*{margin-left:.5rem}.space-x-3>*+*{margin-left:.75rem}.space-y-1\.5>*+*{margin-top:.375rem}.space-y-3>*+*{margin-top:.75rem}
+    .p-1{padding:.25rem}.p-2{padding:.5rem}.p-3{padding:.75rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.p-8{padding:2rem}
+    .px-2{padding-left:.5rem;padding-right:.5rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}
+    .py-1{padding-top:.25rem;padding-bottom:.25rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-2\.5{padding-top:.625rem;padding-bottom:.625rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.py-3\.5{padding-top:.875rem;padding-bottom:.875rem}
+    .pb-3{padding-bottom:.75rem}.pb-4{padding-bottom:1rem}.pt-4{padding-top:1rem}
+    .m-0{margin:0}.mx-4{margin-left:1rem;margin-right:1rem}.mx-auto{margin-left:auto;margin-right:auto}
+    .mb-0{margin-bottom:0}.mb-1{margin-bottom:.25rem}.mb-1\.5{margin-bottom:.375rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.mb-5{margin-bottom:1.25rem}.mb-6{margin-bottom:1.5rem}
+    .mt-1{margin-top:.25rem}.mt-2{margin-top:.5rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.mt-6{margin-top:1.5rem}
+    .ml-2{margin-left:.5rem}.mr-2{margin-right:.5rem}
+    .w-full{width:100%}.w-24{width:6rem}.w-28{width:7rem}.h-6{height:1.5rem}.h-16{height:4rem}.w-6{width:1.5rem}
+    .max-w-7xl{max-width:80rem}.max-w-lg{max-width:32rem}.max-w-sm{max-width:24rem}.max-w-2xl{max-width:42rem}.max-w-4xl{max-width:56rem}.max-w-md{max-width:28rem}.max-w-\[95vw\]{max-width:95vw}
+    .max-h-32{max-height:8rem}.max-h-36{max-height:9rem}.max-h-\[90vh\]{max-height:90vh}.max-h-\[92vh\]{max-height:92vh}
+    .min-w-0{min-width:0}.min-w-\[80px\]{min-width:80px}.min-h-\[44px\]{min-height:44px}.min-h-\[48px\]{min-height:48px}
+    .overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.overflow-x-auto{overflow-x:auto}
+    .relative{position:relative}.absolute{position:absolute}.fixed{position:fixed}.sticky{position:sticky}.inset-0{inset:0}.top-0{top:0}.right-4{right:1rem}.top-20{top:5rem}
+    .z-50{z-index:50}.z-\[60\]{z-index:60}.z-\[65\]{z-index:65}.z-\[70\]{z-index:70}.z-\[80\]{z-index:80}.z-\[85\]{z-index:85}.z-\[86\]{z-index:86}.z-\[100\]{z-index:100}
+    .text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}
+    .text-xs{font-size:.75rem;line-height:1rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}
+    .font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}
+    .text-white{color:#fff}.text-gray-300{color:#d1d5db}.text-gray-400{color:#9ca3af}.text-gray-500{color:#6b7280}.text-gray-600{color:#4b5563}.text-gray-700{color:#374151}.text-gray-800{color:#1f2937}
+    .text-red-500{color:#ef4444}.text-red-600{color:#dc2626}.text-blue-600{color:#2563eb}.text-green-600{color:#16a34a}
+    .bg-black\/40{background:rgba(0,0,0,.4)}.bg-black\/50{background:rgba(0,0,0,.5)}
+    .bg-red-50{background:#fef2f2}.bg-green-50{background:#f0fdf4}
+    .border{border-width:1px}.border-2{border-width:2px}.border-t{border-top-width:1px}.border-b{border-bottom-width:1px}
+    .rounded{border-radius:.25rem}.rounded-lg{border-radius:.5rem}.rounded-xl{border-radius:.75rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}
+    .shadow-sm{box-shadow:0 1px 2px 0 rgba(0,0,0,.05)}.shadow-2xl{box-shadow:0 25px 50px -12px rgba(0,0,0,.25)}
+    .transition-colors{transition-property:color,background-color,border-color;transition-duration:.15s}.transition-all{transition-property:all;transition-duration:.15s}.duration-200{transition-duration:.2s}.duration-300{transition-duration:.3s}
+    .hover\:bg-gray-100:hover{background:#f3f4f6}.hover\:bg-gray-300:hover{background:#d1d5db}
+    .hover\:text-gray-600:hover{color:#4b5563}.hover\:text-gray-800:hover{color:#1f2937}.hover\:text-green-800:hover{color:#166534}
+    .hover\:bg-red-600:hover{background:#dc2626}.hover\:bg-blue-600:hover{background:#2563eb}
+    .hover\:bg-green-50:hover{background:#f0fdf4}
+    .sm\:hidden{display:none}.sm\:flex{display:flex}.sm\:px-6{padding-left:1.5rem;padding-right:1.5rem}.sm\:p-5{padding:1.25rem}
+    .lg\:px-8{padding-left:2rem;padding-right:2rem}.lg\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .sm\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .divide-y>*+*{border-top-width:1px}.divide-gray-100>*+*{border-color:#f3f4f6}
+    .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.whitespace-nowrap{white-space:nowrap}
+    .tracking-wider{letter-spacing:.05em}.uppercase{text-transform:uppercase}
+    .cursor-pointer{cursor:pointer}.select-none{user-select:none}
+    .ring-2{box-shadow:0 0 0 2px var(--tw-ring-color,currentColor)}.ring-offset-1{--tw-ring-offset-width:2px;box-shadow:0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color,#fff),0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color,currentColor)}
+    .opacity-75{opacity:.75}
+    @media(min-width:640px){.sm\:hidden{display:none!important}.sm\:flex{display:flex!important}}
+    @media(min-width:1024px){.lg\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+  </style>
 
   <!-- 自定义样式 -->
   <link rel="stylesheet" href="css/style.css">
@@ -257,16 +281,3 @@
   <script src="js/app.js"></script>
 </body>
 </html>
-<!-- PWA桌面APP配置 - 全局生效 -->
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="钢材系统">
-<script>
-// 注册PWA服务
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('service-worker.js');
-  });
-}
-</script>
