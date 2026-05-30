@@ -11,6 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="Steel 钢材管理">
   <title>Steel - 钢材加工生产管理系统</title>
 
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.svg">
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.svg">
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -217,6 +223,31 @@
       <!-- 由 production-list.js 动态渲染 -->
     </div>
   </div>
+
+  <!-- ========== PWA Service Worker 注册 ========== -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function(reg) {
+          console.log('[PWA] Service Worker registered:', reg.scope);
+          // 监听更新
+          reg.addEventListener('updatefound', function() {
+            var newWorker = reg.installing;
+            newWorker.addEventListener('statechange', function() {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[PWA] New version available, will update on next load');
+                if (typeof showToast === 'function') {
+                  showToast('有新版本，刷新后生效', 'info');
+                }
+              }
+            });
+          });
+        }).catch(function(err) {
+          console.log('[PWA] SW registration failed:', err);
+        });
+      });
+    }
+  </script>
 
   <!-- ========== JS 模块加载 ========== -->
   <script src="js/storage.js"></script>

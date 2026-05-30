@@ -18,6 +18,12 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
   <title>Steel - 钢材加工生产管理系统</title>
 
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.svg">
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.svg">
+
   <!-- 页面图标 -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏭</text></svg>">
 
@@ -175,6 +181,30 @@
 
   <!-- 财务对账表格弹窗 -->
   <div id="financeTableModal" class="modal-overlay hidden"><div class="modal-card modal-card-xl flex-col" id="financeTableModalContent"></div></div>
+
+  <!-- ========== PWA Service Worker 注册 ========== -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function(reg) {
+          console.log('[PWA] Service Worker registered:', reg.scope);
+          reg.addEventListener('updatefound', function() {
+            var newWorker = reg.installing;
+            newWorker.addEventListener('statechange', function() {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[PWA] New version available');
+                if (typeof showToast === 'function') {
+                  showToast('有新版本，刷新后生效', 'info');
+                }
+              }
+            });
+          });
+        }).catch(function(err) {
+          console.log('[PWA] SW registration failed:', err);
+        });
+      });
+    }
+  </script>
 
   <!-- ========== JS 模块（合并加载，APP兼容） ========== -->
   <script src="js/app-bundle.js"></script>
