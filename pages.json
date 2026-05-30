@@ -1,0 +1,38 @@
+{
+  "pages": [
+    {
+      "path": "index-app.html",
+      "style": {
+        "navigationBarTitleText": "Steel钢材管理",
+        "navigationStyle": "custom",
+        "app-plus": {
+          "titleNView": false,
+          "bounce": "none",
+          "scrollIndicator": "none",
+          "softinputNavBar": "none",
+          "pullToRefresh": {
+            "support": false
+          },
+          "animationType": "none",
+          "popGesture": "none"
+        }
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "Steel钢材管理",
+    "navigationBarBackgroundColor": "#1a2332",
+    "backgroundColor": "#f0f2f5",
+    "app-plus": {
+      "background": "#f0f2f5",
+      "titleNView": false,
+      "bounce": "none",
+      "scrollIndicator": "none",
+      "popGesture": "none",
+      "animationType": "none",
+      "animationDuration": 200,
+      "softinputNavBar": "none"
+    }
+  }
+}
