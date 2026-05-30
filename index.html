@@ -28,16 +28,32 @@
         <input type="date" id="shipDate" required
           class="border rounded px-3 py-2">
         <textarea id="remark" placeholder="备注" class="md:col-span-2 border rounded px-3 py-2"></textarea>
-        <button type="submit"
-          class="md:col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-          提交计划
-        </button>
+        <div class="md:col-span-2 flex gap-2">
+          <button type="submit" id="submitBtn"
+            class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+            提交计划
+          </button>
+          <button type="button" id="cancelBtn" style="display:none"
+            class="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600">
+            取消编辑
+          </button>
+        </div>
       </form>
     </div>
 
-    <!-- 列表区域 -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-xl font-semibold mb-4">生产计划列表</h2>
+    <!-- 当日操作按钮 -->
+    <div class="bg-white rounded-lg shadow p-4 mb-6 flex gap-4">
+      <button id="createFullPlanBtn" class="w-full bg-green-600 text-white py-3 rounded-lg text-lg hover:bg-green-700">
+        📄 生成今日完整项目计划表
+      </button>
+      <button id="clearTodayBtn" class="w-full bg-red-500 text-white py-3 rounded-lg text-lg hover:bg-red-600">
+        🗑️ 清空今日所有计划
+      </button>
+    </div>
+
+    <!-- 今日录入列表 -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+      <h2 class="text-xl font-semibold mb-4">今日录入计划列表</h2>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead class="bg-gray-200">
@@ -48,6 +64,7 @@
               <th class="px-2 py-2 text-left">数量</th>
               <th class="px-2 py-2 text-left">尺寸</th>
               <th class="px-2 py-2 text-left">发货日期</th>
+              <th class="px-2 py-2 text-left">备注</th>
               <th class="px-2 py-2 text-left">操作</th>
             </tr>
           </thead>
@@ -55,6 +72,35 @@
         </table>
       </div>
     </div>
+
+    <!-- 正式计划表区域 -->
+    <div id="fullPlanBox" class="bg-white rounded-lg shadow p-6 hidden">
+      <h2 class="text-2xl font-bold text-center mb-6 border-b pb-3">📋 当日完整钢材项目计划表</h2>
+      <div class="text-center mb-4">
+        生成日期：<span id="planDate"></span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full border text-sm">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="border px-3 py-2">序号</th>
+              <th class="border px-3 py-2">客户名称</th>
+              <th class="border px-3 py-2">钢材编号</th>
+              <th class="border px-3 py-2">重量(吨)</th>
+              <th class="border px-3 py-2">数量</th>
+              <th class="border px-3 py-2">尺寸(mm)</th>
+              <th class="border px-3 py-2">发货日期</th>
+              <th class="border px-3 py-2">备注</th>
+            </tr>
+          </thead>
+          <tbody id="fullPlanTable"></tbody>
+        </table>
+      </div>
+      <div class="mt-6 text-right text-gray-600">
+        合计单数：<span id="totalCount" class="font-bold">0</span> 单
+      </div>
+    </div>
+
   </div>
 
   <script src="script.js"></script>
