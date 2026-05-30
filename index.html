@@ -364,9 +364,19 @@
             || document.referrer.includes('android-app://');
       }
 
+      // 标记用户已安装/已添加
+      function markAsInstalled() {
+        localStorage.setItem('pwa_installed', '1');
+      }
+
+      // 检查是否已安装过
+      function wasInstalled() {
+        return localStorage.getItem('pwa_installed') === '1';
+      }
+
       // 显示底部横幅
       function showBanner() {
-        if (isStandalone()) return;
+        if (isStandalone() || wasInstalled()) return;
         if (localStorage.getItem('pwa_banner_closed')) return;
         pwaBannerDesc.textContent = '添加到桌面，像APP一样使用';
         setTimeout(function() { pwaBanner.classList.add('show'); }, 1500);
@@ -417,7 +427,7 @@
 
       // 3秒后还没触发 beforeinstallprompt（夸克等不支持），显示横幅
       setTimeout(function() {
-        if (!deferredPrompt && !pwaBanner.classList.contains('show')) {
+        if (!deferredPrompt && !pwaBanner.classList.contains('show') && !wasInstalled()) {
           showBanner();
         }
       }, 3000);
@@ -430,6 +440,9 @@
           deferredPrompt.userChoice.then(function(result) {
             deferredPrompt = null;
             pwaBanner.classList.remove('show');
+            if (result.outcome === 'accepted') {
+              markAsInstalled();
+            }
           });
         } else {
           // 夸克等不支持标准 API，显示教程弹窗
@@ -444,17 +457,29 @@
         localStorage.setItem('pwa_banner_closed', '1');
       });
 
-      // 关闭教程弹窗
-      guideClose.addEventListener('click', hideGuide);
+      // 关闭教程弹窗（视为用户已看到教程，不再重复弹）
+      guideClose.addEventListener('click', function() {
+        hideGuide();
+        markAsInstalled();
+      });
       guideOverlay.addEventListener('click', function(e) {
-        if (e.target === guideOverlay) hideGuide();
+        if (e.target === guideOverlay) {
+          hideGuide();
+          markAsInstalled();
+        }
       });
 
       // 已安装
       window.addEventListener('appinstalled', function() {
         pwaBanner.classList.remove('show');
         hideGuide();
+        markAsInstalled();
       });
+
+      // 如果当前已处于 standalone 模式，标记已安装
+      if (isStandalone()) {
+        markAsInstalled();
+      }
     })();
   </script>
 </body>
