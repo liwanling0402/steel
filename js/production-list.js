@@ -1771,16 +1771,17 @@ function openFinanceTableModal() {
     '结算状态', '对账备注'
   ];
 
-  // 构建表格行
+  // 构建表格行（PC横向表格）
   var rowsHtml = '';
+  // 构建移动端竖向卡片
+  var cardsHtml = '';
   sorted.forEach(function (plan) {
     var unitPrice = plan.unitPrice || 0;
     var totalPrice = plan.totalPrice || 0;
     var received = plan.receivedAmount || 0;
     var unpaid = plan.unpaidAmount || 0;
     var settleLabel = getSettleLabel(plan.settleStatus || 'unsettled');
-    var settleColor = getSettleColor(plan.settleStatus || 'unsettled');
-    var settleBg = getSettleBg(plan.settleStatus || 'unsettled');
+    var settleClass = getSettleClass(plan.settleStatus || 'unsettled');
 
     rowsHtml += '\
       <tr data-id="' + plan.id + '">\n\
@@ -1807,7 +1808,7 @@ function openFinanceTableModal() {
         </td>\n\
         <td class="finance-calc-cell ' + (unpaid > 0 ? 'negative' : 'positive') + '" id="ftUnpaid_' + plan.id + '">' + formatMoney(unpaid) + '</td>\n\
         <td class="text-center">\n\
-          <span class="settle-badge ' + getSettleClass(plan.settleStatus || 'unsettled') + '" id="ftSettle_' + plan.id + '">' + settleLabel + '</span>\n\
+          <span class="settle-badge ' + settleClass + '" id="ftSettle_' + plan.id + '">' + settleLabel + '</span>\n\
         </td>\n\
         <td class="text-center">\n\
           <input type="text" class="finance-table-input" style="width:100px;text-align:left;" \n\
@@ -1817,6 +1818,68 @@ function openFinanceTableModal() {
             onchange="financeTableCellChanged(this)" />\n\
         </td>\n\
       </tr>\n\
+    ';
+
+    // 移动端竖向卡片
+    cardsHtml += '\
+    <div class="finance-card" data-id="' + plan.id + '">\n\
+      <div class="finance-card-header">\n\
+        <span class="finance-card-no">📋 ' + escapeHtml(plan.planNo) + '</span>\n\
+        <span class="settle-badge ' + settleClass + '" id="ftCardSettle_' + plan.id + '">' + settleLabel + '</span>\n\
+      </div>\n\
+      <div class="finance-card-info">\n\
+        <div class="finance-card-row">\n\
+          <span class="finance-card-label">钢材类型</span>\n\
+          <span class="finance-card-value">' + escapeHtml(plan.steelType) + '</span>\n\
+        </div>\n\
+        <div class="finance-card-row">\n\
+          <span class="finance-card-label">规格</span>\n\
+          <span class="finance-card-value">' + escapeHtml(plan.specification) + '</span>\n\
+        </div>\n\
+        <div class="finance-card-row">\n\
+          <span class="finance-card-label">数量</span>\n\
+          <span class="finance-card-value">' + plan.quantity + ' ' + escapeHtml(plan.unit) + '</span>\n\
+        </div>\n\
+      </div>\n\
+      <div class="finance-card-edit">\n\
+        <div class="finance-card-field">\n\
+          <label>单价（元）</label>\n\
+          <input type="number" class="finance-table-input finance-card-input" \n\
+            data-id="' + plan.id + '" data-field="unitPrice" \n\
+            value="' + (unitPrice || '') + '" \n\
+            min="0" step="0.01" placeholder="输入单价"\n\
+            onchange="financeTableCellChanged(this)"\n\
+            onfocus="financeTableCellFocus(this)" />\n\
+        </div>\n\
+        <div class="finance-card-field">\n\
+          <label>已收金额（元）</label>\n\
+          <input type="number" class="finance-table-input finance-card-input" \n\
+            data-id="' + plan.id + '" data-field="receivedAmount" \n\
+            value="' + (received || '') + '" \n\
+            min="0" step="0.01" placeholder="输入已收金额"\n\
+            onchange="financeTableCellChanged(this)"\n\
+            onfocus="financeTableCellFocus(this)" />\n\
+        </div>\n\
+      </div>\n\
+      <div class="finance-card-totals">\n\
+        <div class="finance-card-total-item">\n\
+          <span class="finance-card-label">总价</span>\n\
+          <span class="finance-calc-cell ' + (totalPrice > 0 ? 'positive' : 'zero') + '" id="ftCardTotal_' + plan.id + '">' + formatMoney(totalPrice) + '</span>\n\
+        </div>\n\
+        <div class="finance-card-total-item">\n\
+          <span class="finance-card-label">未收欠款</span>\n\
+          <span class="finance-calc-cell ' + (unpaid > 0 ? 'negative' : 'positive') + '" id="ftCardUnpaid_' + plan.id + '">' + formatMoney(unpaid) + '</span>\n\
+        </div>\n\
+      </div>\n\
+      <div class="finance-card-field" style="padding-top:0.5rem;border-top:1px dashed #e5e7eb;">\n\
+        <label>对账备注</label>\n\
+        <input type="text" class="finance-table-input finance-card-input" \n\
+          data-id="' + plan.id + '" data-field="financeRemark" \n\
+          value="' + escapeHtml(plan.financeRemark || '') + '" \n\
+          maxlength="100" placeholder="备注信息"\n\
+          onchange="financeTableCellChanged(this)" />\n\
+      </div>\n\
+    </div>\n\
     ';
   });
 
@@ -1849,8 +1912,8 @@ function openFinanceTableModal() {
       </p>\n\
     </div>\n\
     \n\
-    <!-- 表格主体（可横向滚动） -->\n\
-    <div class="finance-table-body p-3">\n\
+    <!-- PC横向表格（可横向滚动） -->\n\
+    <div class="finance-table-body p-3 finance-table-desktop">\n\
       <table class="finance-table">\n\
         <thead>\n\
           <tr>\n\
@@ -1872,6 +1935,11 @@ function openFinanceTableModal() {
           </tr>\n\
         </tfoot>\n\
       </table>\n\
+    </div>\n\
+    \n\
+    <!-- 移动端竖向卡片 -->\n\
+    <div class="finance-cards-mobile">\n\
+      ' + cardsHtml + '\n\
     </div>\n\
     \n\
     <!-- 弹窗底部操作栏 -->\n\
@@ -1973,7 +2041,19 @@ function financeTableCellChanged(input) {
   var calcUnpaid = calcTotal - received;
   if (calcUnpaid < 0) calcUnpaid = 0;
 
-  // 更新行内显示
+  // 计算结算状态
+  var settleKey;
+  if (calcTotal <= 0) {
+    settleKey = 'unsettled';
+  } else if (received >= calcTotal) {
+    settleKey = 'settled';
+  } else if (received > 0) {
+    settleKey = 'partial';
+  } else {
+    settleKey = 'unsettled';
+  }
+
+  // 更新PC表格行内显示
   var totalCell = document.getElementById('ftTotal_' + planId);
   var unpaidCell = document.getElementById('ftUnpaid_' + planId);
   var settleBadge = document.getElementById('ftSettle_' + planId);
@@ -1986,21 +2066,26 @@ function financeTableCellChanged(input) {
     unpaidCell.textContent = formatMoney(calcUnpaid);
     unpaidCell.className = 'finance-calc-cell ' + (calcUnpaid > 0 ? 'negative' : 'positive');
   }
-
-  // 更新结算状态徽章
   if (settleBadge) {
-    var settleKey;
-    if (calcTotal <= 0) {
-      settleKey = 'unsettled';
-    } else if (received >= calcTotal) {
-      settleKey = 'settled';
-    } else if (received > 0) {
-      settleKey = 'partial';
-    } else {
-      settleKey = 'unsettled';
-    }
     settleBadge.textContent = getSettleLabel(settleKey);
     settleBadge.className = 'settle-badge ' + getSettleClass(settleKey);
+  }
+
+  // 更新移动端卡片显示
+  var cardTotal = document.getElementById('ftCardTotal_' + planId);
+  var cardUnpaid = document.getElementById('ftCardUnpaid_' + planId);
+  var cardSettle = document.getElementById('ftCardSettle_' + planId);
+  if (cardTotal) {
+    cardTotal.textContent = formatMoney(calcTotal);
+    cardTotal.className = 'finance-calc-cell ' + (calcTotal > 0 ? 'positive' : 'zero');
+  }
+  if (cardUnpaid) {
+    cardUnpaid.textContent = formatMoney(calcUnpaid);
+    cardUnpaid.className = 'finance-calc-cell ' + (calcUnpaid > 0 ? 'negative' : 'positive');
+  }
+  if (cardSettle) {
+    cardSettle.textContent = getSettleLabel(settleKey);
+    cardSettle.className = 'settle-badge ' + getSettleClass(settleKey);
   }
 
   // 更新底部合计

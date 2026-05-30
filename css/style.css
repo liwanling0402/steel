@@ -1086,6 +1086,107 @@ table {
 /* ==========================================
    十八、财务表格
    ========================================== */
+
+/* 移动端竖向卡片 */
+.finance-cards-mobile {
+  display: none;
+}
+
+.finance-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.finance-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.finance-card-no {
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 0.9rem;
+}
+
+.finance-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.finance-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8125rem;
+}
+
+.finance-card-label {
+  color: #9ca3af;
+  font-size: 0.75rem;
+}
+
+.finance-card-value {
+  color: #374151;
+  font-weight: 500;
+}
+
+.finance-card-edit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+
+.finance-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.finance-card-field label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.finance-card-input {
+  width: 100% !important;
+  min-height: 42px;
+  font-size: 1rem !important;
+  padding: 0.5rem 0.75rem !important;
+  -webkit-appearance: none;
+}
+
+.finance-card-totals {
+  display: flex;
+  justify-content: space-around;
+  padding: 0.625rem 0;
+  margin-bottom: 0.5rem;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.finance-card-total-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+}
+
 .finance-table {
   width: 100%;
   border-collapse: separate;
@@ -1693,6 +1794,10 @@ table {
     max-height: 96vh !important;
     width: calc(100% - 0.5rem) !important;
   }
+
+  /* 小屏：隐藏横向表格，显示竖向卡片 */
+  .finance-table-desktop { display: none !important; }
+  .finance-cards-mobile { display: block !important; }
 
   .finance-table { font-size: 0.75rem; }
 
