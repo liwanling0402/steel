@@ -348,9 +348,11 @@
       // 检测浏览器类型
       function getBrowser() {
         var ua = navigator.userAgent;
-        if (/Quark/i.test(ua)) return 'quark';
-        if (/UCBrowser/i.test(ua)) return 'uc';
+        // UC浏览器（有独特UA）
+        if (/UCBrowser/i.test(ua) || /UCWEB/i.test(ua)) return 'uc';
+        // iOS Safari
         if (/iPhone|iPad|iPod/.test(ua)) return 'ios';
+        // Android（夸克/Chrome/Edge等都归为android，统一教程）
         if (/Android/.test(ua)) return 'android';
         return 'other';
       }
@@ -366,10 +368,7 @@
       function showBanner() {
         if (isStandalone()) return;
         if (localStorage.getItem('pwa_banner_closed')) return;
-        var browser = getBrowser();
-        if (browser === 'quark') {
-          pwaBannerDesc.textContent = '点击按钮查看安装教程';
-        }
+        pwaBannerDesc.textContent = '添加到桌面，像APP一样使用';
         setTimeout(function() { pwaBanner.classList.add('show'); }, 1500);
       }
 
@@ -378,13 +377,7 @@
         var browser = getBrowser();
         var steps = '';
 
-        if (browser === 'quark') {
-          guideTitle.textContent = '夸克浏览器安装教程';
-          steps = '<div class="pwa-step"><span class="pwa-step-num">1</span>点击夸克底部中间「<b>☰</b>」菜单按钮</div>' +
-                  '<div class="pwa-step"><span class="pwa-step-num">2</span>在弹出的菜单中找到「<b>添加到桌面</b>」</div>' +
-                  '<div class="pwa-step"><span class="pwa-step-num">3</span>点击「<b>添加</b>」确认</div>' +
-                  '<div class="pwa-step"><span class="pwa-step-num">✅</span>桌面出现 Steel 图标，点击打开</div>';
-        } else if (browser === 'uc') {
+        if (browser === 'uc') {
           guideTitle.textContent = 'UC浏览器安装教程';
           steps = '<div class="pwa-step"><span class="pwa-step-num">1</span>点击UC底部「<b>三</b>」菜单</div>' +
                   '<div class="pwa-step"><span class="pwa-step-num">2</span>找到「<b>添加到桌面</b>」图标</div>' +
@@ -394,9 +387,15 @@
           steps = '<div class="pwa-step"><span class="pwa-step-num">1</span>点击 Safari 底部「<b>分享</b>」按钮（方框箭头）</div>' +
                   '<div class="pwa-step"><span class="pwa-step-num">2</span>往下滑动，找到「<b>添加到主屏幕</b>」</div>' +
                   '<div class="pwa-step"><span class="pwa-step-num">3</span>点击右上角「<b>添加</b>」</div>';
+        } else if (browser === 'android') {
+          guideTitle.textContent = '添加到桌面教程';
+          steps = '<div class="pwa-step"><span class="pwa-step-num">1</span>点击浏览器菜单按钮（底部或右上角「<b>☰</b>」或「<b>⋮</b>」）</div>' +
+                  '<div class="pwa-step"><span class="pwa-step-num">2</span>找到「<b>添加到桌面</b>」或「<b>添加到主屏幕</b>」</div>' +
+                  '<div class="pwa-step"><span class="pwa-step-num">3</span>点击确认添加</div>' +
+                  '<div class="pwa-step"><span class="pwa-step-num">💡</span><span style="color:#666">夸克：底部中间菜单 → 添加到桌面<br>Chrome：右上角 ⋮ → 添加到主屏幕<br>Edge：底部中间 → 添加到手机</span></div>';
         } else {
           guideTitle.textContent = '添加到桌面教程';
-          steps = '<div class="pwa-step"><span class="pwa-step-num">1</span>点击浏览器右上角「<b>⋮</b>」菜单</div>' +
+          steps = '<div class="pwa-step"><span class="pwa-step-num">1</span>点击浏览器菜单</div>' +
                   '<div class="pwa-step"><span class="pwa-step-num">2</span>选择「<b>添加到主屏幕</b>」或「<b>安装应用</b>」</div>' +
                   '<div class="pwa-step"><span class="pwa-step-num">3</span>确认安装</div>';
         }
