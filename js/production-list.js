@@ -93,13 +93,33 @@ function renderList() {
 
 /**
  * 渲染进度统计面板
+ * @param {Array} plans - 筛选后的计划列表
  */
 function renderProgressStats(plans) {
   var panel = document.getElementById('progressStatsPanel');
   if (!panel) return;
 
-  var stats = getProgressStats();
-  var total = stats.total;
+  // 基于传入的筛选后数据计算统计
+  var total = plans.length;
+  var completedCount = plans.filter(function (p) { return p.progressStatus === 'completed'; }).length;
+  var completionRate = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+  // 各工序数量统计
+  var stepStats = {};
+  PROCESS_STEPS.forEach(function (step) {
+    stepStats[step.key] = {
+      label: step.label,
+      total: plans.filter(function (p) { return p.processStep === step.key; }).length
+    };
+  });
+
+  // 各进度状态数量
+  var progressStats = {
+    pending:    plans.filter(function (p) { return p.progressStatus === 'pending'; }).length,
+    processing: plans.filter(function (p) { return p.progressStatus === 'processing'; }).length,
+    completed:  plans.filter(function (p) { return p.progressStatus === 'completed'; }).length,
+    delayed:    plans.filter(function (p) { return p.progressStatus === 'delayed'; }).length
+  };
 
   if (total === 0) {
     panel.innerHTML = '\
@@ -112,7 +132,7 @@ function renderProgressStats(plans) {
   }
 
   // 完成率进度条
-  var barColor = stats.completionRate >= 80 ? '#16a34a' : (stats.completionRate >= 50 ? '#2563eb' : '#f97316');
+  var barColor = completionRate >= 80 ? '#16a34a' : (completionRate >= 50 ? '#2563eb' : '#f97316');
 
   var html = '\
     <div class="flex items-center justify-between mb-3">\
@@ -124,29 +144,29 @@ function renderProgressStats(plans) {
     <div class="mb-3">\
       <div class="flex items-center justify-between mb-1">\
         <span class="text-xs text-gray-500">总完成率</span>\
-        <span class="text-sm font-bold" style="color:' + barColor + '">' + stats.completionRate + '%</span>\
+        <span class="text-sm font-bold" style="color:' + barColor + '">' + completionRate + '%</span>\
       </div>\
       <div class="progress-bar-bg">\
-        <div class="progress-bar-fill" style="width:' + stats.completionRate + '%; background:' + barColor + ';"></div>\
+        <div class="progress-bar-fill" style="width:' + completionRate + '%; background:' + barColor + ';"></div>\
       </div>\
     </div>\
     \
     <!-- 进度状态分布 -->\
     <div class="progress-stat-panel">\
       <div class="progress-stat-card">\
-        <div class="progress-stat-value" style="color:#f97316;">' + stats.progressStats.pending + '</div>\
+        <div class="progress-stat-value" style="color:#f97316;">' + progressStats.pending + '</div>\
         <div class="progress-stat-label">待加工</div>\
       </div>\
       <div class="progress-stat-card">\
-        <div class="progress-stat-value" style="color:#2563eb;">' + stats.progressStats.processing + '</div>\
+        <div class="progress-stat-value" style="color:#2563eb;">' + progressStats.processing + '</div>\
         <div class="progress-stat-label">加工中</div>\
       </div>\
       <div class="progress-stat-card">\
-        <div class="progress-stat-value" style="color:#16a34a;">' + stats.progressStats.completed + '</div>\
+        <div class="progress-stat-value" style="color:#16a34a;">' + progressStats.completed + '</div>\
         <div class="progress-stat-label">已完成</div>\
       </div>\
       <div class="progress-stat-card">\
-        <div class="progress-stat-value" style="color:#dc2626;">' + stats.progressStats.delayed + '</div>\
+        <div class="progress-stat-value" style="color:#dc2626;">' + progressStats.delayed + '</div>\
         <div class="progress-stat-label">延期</div>\
       </div>\
     </div>\
@@ -157,9 +177,9 @@ function renderProgressStats(plans) {
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">\
   ';
 
-  var stepKeys = Object.keys(stats.stepStats);
+  var stepKeys = Object.keys(stepStats);
   stepKeys.forEach(function (key) {
-    var s = stats.stepStats[key];
+    var s = stepStats[key];
     html += '\
         <div class="bg-gray-50 rounded-lg px-3 py-2 text-center">\
           <div class="text-sm font-bold text-gray-700">' + s.total + '</div>\
@@ -364,21 +384,14 @@ function bindListEvents() {
   var searchInput = document.getElementById('searchInput');
   var statusFilter = document.getElementById('statusFilter');
 
-  // 搜索防抖定时器
-  var searchTimer = null;
-  var lastSearchKeyword = '';
+  // 防抖定时器
+  var debounceTimer = null;
 
   var doSearch = function () {
     var keyword = (searchInput && searchInput.value || '').toLowerCase().trim();
     var status = statusFilter && statusFilter.value || 'all';
 
-    // 如果关键词和状态都没变，跳过
-    if (keyword === lastSearchKeyword && status === (statusFilter._lastStatus || 'all')) return;
-    lastSearchKeyword = keyword;
-    if (statusFilter) statusFilter._lastStatus = status;
-
     var plans = getPlans();
-    var totalBefore = plans.length;
     var filtered = plans.filter(function (plan) {
       if (status !== 'all' && plan.status !== status) return false;
       if (keyword) {
@@ -391,39 +404,50 @@ function bindListEvents() {
       return true;
     });
 
-    // 搜索反馈弹窗
+    // 搜索反馈弹窗（有输入关键词时才弹窗）
     if (keyword) {
       if (filtered.length === 0) {
-        // 无结果
-        showSearchResultModal('no_result', keyword, totalBefore, status);
+        showSearchResultModal('no_result', keyword, plans.length, status);
       } else {
-        // 有结果
         showSearchResultModal('found', keyword, filtered.length, status);
-      }
-    } else if (status !== 'all') {
-      // 仅按状态筛选时，只显示条数提示
-      if (filtered.length === 0) {
-        showSearchResultModal('no_status', '', 0, status);
       }
     }
 
+    // 更新列表显示
     renderProgressStats(filtered);
     renderStats(filtered);
     renderListContent(filtered);
   };
 
+  // 搜索框：输入时防抖 300ms
   if (searchInput) {
-    searchInput.addEventListener('input', function () {
-      // 防抖：300ms 内连续输入只执行最后一次
-      if (searchTimer) clearTimeout(searchTimer);
-      searchTimer = setTimeout(doSearch, 300);
-    });
+    // 先移除旧事件（避免重复绑定）
+    searchInput.removeEventListener('input', searchInput._searchHandler);
+    searchInput._searchHandler = function () {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(doSearch, 300);
+    };
+    searchInput.addEventListener('input', searchInput._searchHandler);
+
+    // 回车键立即搜索
+    searchInput.removeEventListener('keydown', searchInput._keyHandler);
+    searchInput._keyHandler = function (e) {
+      if (e.key === 'Enter') {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        doSearch();
+      }
+    };
+    searchInput.addEventListener('keydown', searchInput._keyHandler);
   }
+
+  // 状态筛选下拉框
   if (statusFilter) {
-    statusFilter.addEventListener('change', function () {
-      if (searchTimer) clearTimeout(searchTimer);
+    statusFilter.removeEventListener('change', statusFilter._changeHandler);
+    statusFilter._changeHandler = function () {
+      if (debounceTimer) clearTimeout(debounceTimer);
       doSearch();
-    });
+    };
+    statusFilter.addEventListener('change', statusFilter._changeHandler);
   }
 }
 
