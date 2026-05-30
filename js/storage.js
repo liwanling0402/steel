@@ -5,6 +5,7 @@
    ========================================== */
 
 var STORAGE_KEY = 'steel_production_plans';
+var STEEL_TYPES_HISTORY_KEY = 'steel_types_history';
 
 /**
  * 工序步骤定义
@@ -388,4 +389,60 @@ function getProgressStats() {
     stepStats: stepStats,
     progressStats: progressStats
   };
+}
+
+// ==========================================
+// 钢材类型历史记录管理
+// ==========================================
+
+/**
+ * 获取钢材类型历史记录
+ * @returns {Array<string>} 历史钢材类型列表
+ */
+function getSteelTypesHistory() {
+  try {
+    var data = localStorage.getItem(STEEL_TYPES_HISTORY_KEY);
+    if (!data) {
+      // 首次使用，返回默认预设
+      var defaults = ['热轧卷板', '冷轧卷板', '镀锌卷板', '中厚板', '螺纹钢', '线材', '型钢', '无缝钢管', '焊管', '不锈钢板'];
+      return defaults;
+    }
+    return JSON.parse(data);
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * 保存一条钢材类型到历史记录（去重，最多保留 20 条）
+ * @param {string} steelType - 钢材类型
+ */
+function saveSteelTypeToHistory(steelType) {
+  if (!steelType || !steelType.trim()) return;
+  var type = steelType.trim();
+  var history = getSteelTypesHistory();
+  // 去重：如果已存在则移到最前面
+  var idx = history.indexOf(type);
+  if (idx !== -1) history.splice(idx, 1);
+  history.unshift(type);
+  // 最多保留 20 条
+  if (history.length > 20) history = history.slice(0, 20);
+  try {
+    localStorage.setItem(STEEL_TYPES_HISTORY_KEY, JSON.stringify(history));
+  } catch (e) {
+    console.error('保存钢材类型历史失败:', e);
+  }
+}
+
+/**
+ * 获取钢材类型 datalist 的 HTML 片段
+ * @returns {string}
+ */
+function getSteelTypesDatalistHtml() {
+  var history = getSteelTypesHistory();
+  var html = '';
+  history.forEach(function (t) {
+    html += '<option value="' + escapeHtml(t) + '">';
+  });
+  return html;
 }

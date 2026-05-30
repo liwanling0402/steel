@@ -372,7 +372,11 @@ function bindListEvents() {
     var filtered = plans.filter(function (plan) {
       if (status !== 'all' && plan.status !== status) return false;
       if (keyword) {
-        var searchStr = (plan.planNo + ' ' + plan.steelType + ' ' + plan.specification + ' ' + plan.customer).toLowerCase();
+        // 扩展搜索范围：编号、钢材类型、规格、客户、备注、工序名、进度状态名
+        var stepLabel = getStepLabel(plan.processStep);
+        var progressLabel = getProgressLabel(plan.progressStatus);
+        var statusLabel = (plan.status === 'pending' ? '待生产' : plan.status === 'processing' ? '生产中' : plan.status === 'completed' ? '已完成' : plan.status === 'cancelled' ? '已取消' : plan.status);
+        var searchStr = (plan.planNo + ' ' + plan.steelType + ' ' + plan.specification + ' ' + plan.customer + ' ' + plan.remark + ' ' + stepLabel + ' ' + progressLabel + ' ' + statusLabel).toLowerCase();
         if (searchStr.indexOf(keyword) === -1) return false;
       }
       return true;
@@ -403,7 +407,10 @@ function refreshList() {
   var filtered = plans.filter(function (plan) {
     if (st !== 'all' && plan.status !== st) return false;
     if (kw) {
-      var searchStr = (plan.planNo + ' ' + plan.steelType + ' ' + plan.specification + ' ' + plan.customer).toLowerCase();
+      var stepLabel = getStepLabel(plan.processStep);
+      var progressLabel = getProgressLabel(plan.progressStatus);
+      var statusLabel = (plan.status === 'pending' ? '待生产' : plan.status === 'processing' ? '生产中' : plan.status === 'completed' ? '已完成' : plan.status === 'cancelled' ? '已取消' : plan.status);
+      var searchStr = (plan.planNo + ' ' + plan.steelType + ' ' + plan.specification + ' ' + plan.customer + ' ' + plan.remark + ' ' + stepLabel + ' ' + progressLabel + ' ' + statusLabel).toLowerCase();
       if (searchStr.indexOf(kw) === -1) return false;
     }
     return true;
@@ -431,7 +438,6 @@ function openEditModal(id) {
   var plan = id ? getPlanById(id) : null;
   var isEdit = !!plan;
 
-  var steelTypes = ['热轧卷板', '冷轧卷板', '镀锌卷板', '中厚板', '螺纹钢', '线材', '型钢', '无缝钢管', '焊管', '不锈钢板'];
   var units = ['吨', '千克', '件', '米', '支'];
 
   // 生成工序选项
@@ -465,11 +471,20 @@ function openEditModal(id) {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">\
           <div>\
             <label class="form-label">钢材类型 <span class="text-red-500">*</span></label>\
-            <select id="editSteelType" class="form-select">\
-              <option value="">请选择</option>\
-              ' + steelTypes.map(function (t) { return '<option value="' + t + '"' + (plan && plan.steelType === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '\
-            </select>\
-            <p class="form-error-msg" id="editSteelTypeError">请选择钢材类型</p>\
+            <input\
+              type="text"\
+              id="editSteelType"\
+              class="form-input"\
+              value="' + escapeHtml(plan ? plan.steelType : '') + '"\
+              placeholder="输入钢材类型"\
+              list="editSteelTypeList"\
+              autocomplete="off"\
+              maxlength="50"\
+            />\
+            <datalist id="editSteelTypeList">\
+              ' + getSteelTypesDatalistHtml() + '\
+            </datalist>\
+            <p class="form-error-msg" id="editSteelTypeError">请输入钢材类型</p>\
           </div>\
           <div>\
             <label class="form-label">规格 <span class="text-red-500">*</span></label>\
@@ -590,9 +605,11 @@ function handleEditSubmit() {
   try {
     if (editingId) {
       updatePlan(editingId, data);
+      saveSteelTypeToHistory(data.steelType);
       showToast('计划更新成功！', 'success');
     } else {
       addPlan(data);
+      saveSteelTypeToHistory(data.steelType);
       showToast('计划创建成功！', 'success');
     }
     closeEditModal();
@@ -694,7 +711,10 @@ function buildProgressPlansCache() {
   progressPlansCache = plans.filter(function (plan) {
     if (st !== 'all' && plan.status !== st) return false;
     if (kw) {
-      var searchStr = (plan.planNo + ' ' + plan.steelType + ' ' + plan.specification + ' ' + plan.customer).toLowerCase();
+      var stepLabel = getStepLabel(plan.processStep);
+      var progressLabel = getProgressLabel(plan.progressStatus);
+      var statusLabel = (plan.status === 'pending' ? '待生产' : plan.status === 'processing' ? '生产中' : plan.status === 'completed' ? '已完成' : plan.status === 'cancelled' ? '已取消' : plan.status);
+      var searchStr = (plan.planNo + ' ' + plan.steelType + ' ' + plan.specification + ' ' + plan.customer + ' ' + plan.remark + ' ' + stepLabel + ' ' + progressLabel + ' ' + statusLabel).toLowerCase();
       if (searchStr.indexOf(kw) === -1) return false;
     }
     return true;

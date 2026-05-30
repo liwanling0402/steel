@@ -43,23 +43,22 @@ function renderForm() {
           <p class="form-error-msg" id="planNoError">请输入计划编号</p>\
         </div>\
         \
-        <!-- 钢材类型 -->\
+        <!-- 钢材类型（可输入 + 历史记忆） -->\
         <div>\
           <label class="form-label" for="steelType">钢材类型 <span class="text-red-500">*</span></label>\
-          <select id="steelType" class="form-select">\
-            <option value="">请选择钢材类型</option>\
-            <option value="热轧卷板">热轧卷板</option>\
-            <option value="冷轧卷板">冷轧卷板</option>\
-            <option value="镀锌卷板">镀锌卷板</option>\
-            <option value="中厚板">中厚板</option>\
-            <option value="螺纹钢">螺纹钢</option>\
-            <option value="线材">线材</option>\
-            <option value="型钢">型钢</option>\
-            <option value="无缝钢管">无缝钢管</option>\
-            <option value="焊管">焊管</option>\
-            <option value="不锈钢板">不锈钢板</option>\
-          </select>\
-          <p class="form-error-msg" id="steelTypeError">请选择钢材类型</p>\
+          <input\
+            type="text"\
+            id="steelType"\
+            class="form-input"\
+            placeholder="输入钢材类型，如：热轧卷板"\
+            list="steelTypeList"\
+            autocomplete="off"\
+            maxlength="50"\
+          />\
+          <datalist id="steelTypeList">\
+            ' + getSteelTypesDatalistHtml() + '\
+          </datalist>\
+          <p class="form-error-msg" id="steelTypeError">请输入钢材类型</p>\
         </div>\
         \
         <!-- 规格 -->\
@@ -263,8 +262,12 @@ function handleFormSubmit() {
   // 提交
   try {
     addPlan(formData);
+    // 保存钢材类型到历史记录
+    saveSteelTypeToHistory(formData.steelType);
     showToast('生产计划提交成功！', 'success');
     resetForm();
+    // 刷新 datalist
+    refreshSteelTypeDatalist('steelTypeList');
   } catch (err) {
     showToast('提交失败: ' + err.message, 'error');
   }
@@ -399,4 +402,14 @@ function escapeHtml(str) {
   var div = document.createElement('div');
   div.appendChild(document.createTextNode(str));
   return div.innerHTML;
+}
+
+/**
+ * 刷新钢材类型 datalist
+ * @param {string} datalistId - datalist 元素 ID
+ */
+function refreshSteelTypeDatalist(datalistId) {
+  var list = document.getElementById(datalistId);
+  if (!list) return;
+  list.innerHTML = getSteelTypesDatalistHtml();
 }
