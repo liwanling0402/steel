@@ -64,7 +64,7 @@ function renderList() {
           <button class="btn-secondary text-sm py-2 px-3" onclick="handleExportExcel()" title="导出生产Excel(CSV)">\
             📊 Excel\
           </button>\
-          <button class="btn-secondary text-sm py-2 px-3" onclick="handleExportFinanceExcel()" title="导出财务账单Excel(CSV)">\
+          <button class="btn-secondary text-sm py-2 px-3" onclick="openFinanceTableModal()" title="打开财务对账表格">\
             💰 财务\
           </button>\
           <button class="btn-secondary text-sm py-2 px-3" onclick="document.getElementById(\'importFile\').click()" title="导入数据">\
@@ -1734,5 +1734,502 @@ function handleExportFinanceExcel() {
     showToast(result.message, 'success');
   } else if (result && result.message) {
     showToast(result.message, 'warning');
+  }
+}
+
+// ==========================================
+// 财务对账表格弹窗（在线编辑计算，确认后导出Excel）
+// ==========================================
+
+/** 财务表格缓存（用于记录修改） */
+var financeTableCache = {};
+
+/**
+ * 打开财务对账表格弹窗
+ */
+function openFinanceTableModal() {
+  var modal = document.getElementById('financeTableModal');
+  var content = document.getElementById('financeTableModalContent');
+  if (!modal || !content) return;
+
+  var plans = getPlans();
+  if (plans.length === 0) {
+    showToast('暂无数据，请先录入生产计划', 'warning');
+    return;
+  }
+
+  // 按创建时间倒序
+  var sorted = plans.slice().sort(function (a, b) {
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  // 初始化缓存
+  financeTableCache = {};
+  sorted.forEach(function (plan) {
+    financeTableCache[plan.id] = {
+      unitPrice: plan.unitPrice || 0,
+      receivedAmount: plan.receivedAmount || 0,
+      financeRemark: plan.financeRemark || ''
+    };
+  });
+
+  // 构建表头
+  var headers = [
+    '计划编号', '钢材类型', '规格', '数量',
+    '单价(元)', '总价(元)', '已收(元)', '未收(元)',
+    '结算状态', '对账备注'
+  ];
+
+  // 构建表格行
+  var rowsHtml = '';
+  sorted.forEach(function (plan) {
+    var unitPrice = plan.unitPrice || 0;
+    var totalPrice = plan.totalPrice || 0;
+    var received = plan.receivedAmount || 0;
+    var unpaid = plan.unpaidAmount || 0;
+    var settleLabel = getSettleLabel(plan.settleStatus || 'unsettled');
+    var settleColor = getSettleColor(plan.settleStatus || 'unsettled');
+    var settleBg = getSettleBg(plan.settleStatus || 'unsettled');
+
+    rowsHtml += '\
+      <tr data-id="' + plan.id + '">\n\
+        <td class="font-medium text-gray-800 whitespace-nowrap">' + escapeHtml(plan.planNo) + '</td>\n\
+        <td class="text-gray-600 whitespace-nowrap max-w-[120px] truncate" title="' + escapeHtml(plan.steelType) + '">' + escapeHtml(plan.steelType) + '</td>\n\
+        <td class="text-gray-600 whitespace-nowrap max-w-[100px] truncate" title="' + escapeHtml(plan.specification) + '">' + escapeHtml(plan.specification) + '</td>\n\
+        <td class="text-center text-gray-700 whitespace-nowrap">' + plan.quantity + ' ' + escapeHtml(plan.unit) + '</td>\n\
+        <td class="text-center">\n\
+          <input type="number" class="finance-table-input" \n\
+            data-id="' + plan.id + '" data-field="unitPrice" \n\
+            value="' + (unitPrice || '') + '" \n\
+            min="0" step="0.01" placeholder="0.00"\n\
+            onchange="financeTableCellChanged(this)"\n\
+            onfocus="financeTableCellFocus(this)" />\n\
+        </td>\n\
+        <td class="finance-calc-cell ' + (totalPrice > 0 ? 'positive' : 'zero') + '" id="ftTotal_' + plan.id + '">' + formatMoney(totalPrice) + '</td>\n\
+        <td class="text-center">\n\
+          <input type="number" class="finance-table-input" \n\
+            data-id="' + plan.id + '" data-field="receivedAmount" \n\
+            value="' + (received || '') + '" \n\
+            min="0" step="0.01" placeholder="0.00"\n\
+            onchange="financeTableCellChanged(this)"\n\
+            onfocus="financeTableCellFocus(this)" />\n\
+        </td>\n\
+        <td class="finance-calc-cell ' + (unpaid > 0 ? 'negative' : 'positive') + '" id="ftUnpaid_' + plan.id + '">' + formatMoney(unpaid) + '</td>\n\
+        <td class="text-center">\n\
+          <span class="settle-badge ' + getSettleClass(plan.settleStatus || 'unsettled') + '" id="ftSettle_' + plan.id + '">' + settleLabel + '</span>\n\
+        </td>\n\
+        <td class="text-center">\n\
+          <input type="text" class="finance-table-input" style="width:100px;text-align:left;" \n\
+            data-id="' + plan.id + '" data-field="financeRemark" \n\
+            value="' + escapeHtml(plan.financeRemark || '') + '" \n\
+            maxlength="100" placeholder="备注"\n\
+            onchange="financeTableCellChanged(this)" />\n\
+        </td>\n\
+      </tr>\n\
+    ';
+  });
+
+  // 计算合计
+  var totalQty = 0;
+  var totalPriceSum = 0;
+  var totalReceivedSum = 0;
+  var totalUnpaidSum = 0;
+  sorted.forEach(function (plan) {
+    totalQty += Number(plan.quantity) || 0;
+    totalPriceSum += Number(plan.totalPrice) || 0;
+    totalReceivedSum += Number(plan.receivedAmount) || 0;
+    totalUnpaidSum += Number(plan.unpaidAmount) || 0;
+  });
+
+  content.innerHTML = '\
+    <!-- 弹窗头部 -->\n\
+    <div class="flex items-center justify-between p-5 border-b border-gray-100 flex-shrink-0">\n\
+      <div class="flex items-center space-x-3">\n\
+        <h3 class="text-lg font-bold text-gray-800">💰 财务对账表格</h3>\n\
+        <span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">共 ' + sorted.length + ' 条订单</span>\n\
+      </div>\n\
+      <button class="text-gray-400 hover:text-gray-600 text-xl leading-none p-1" onclick="closeFinanceTableModal()">&times;</button>\n\
+    </div>\n\
+    \n\
+    <!-- 提示信息 -->\n\
+    <div class="px-5 py-2 bg-blue-50 border-b border-blue-100 flex-shrink-0">\n\
+      <p class="text-xs text-blue-700">\n\
+        💡 <strong>在线编辑</strong>：直接在表格中修改单价、已收金额和对账备注，总价和未收欠款会自动计算。编辑完成后点击下方「💾 保存所有修改」，然后可选择「📥 导出Excel」保存到电脑。\n\
+      </p>\n\
+    </div>\n\
+    \n\
+    <!-- 表格主体（可横向滚动） -->\n\
+    <div class="finance-table-body p-3">\n\
+      <table class="finance-table">\n\
+        <thead>\n\
+          <tr>\n\
+            ' + headers.map(function (h) { return '<th>' + h + '</th>'; }).join('\n            ') + '\n\
+          </tr>\n\
+        </thead>\n\
+        <tbody>\n\
+          ' + rowsHtml + '\n\
+        </tbody>\n\
+        <tfoot>\n\
+          <tr>\n\
+            <td colspan="4" class="total-label">📊 合计</td>\n\
+            <td class="total-value">-</td>\n\
+            <td class="total-value" id="ftFootTotalPrice">' + formatMoney(totalPriceSum) + '</td>\n\
+            <td class="total-value" id="ftFootReceived">' + formatMoney(totalReceivedSum) + '</td>\n\
+            <td class="total-value" id="ftFootUnpaid" style="color:' + (totalUnpaidSum > 0 ? '#dc2626' : '#16a34a') + '">' + formatMoney(totalUnpaidSum) + '</td>\n\
+            <td class="total-value">-</td>\n\
+            <td class="total-value">-</td>\n\
+          </tr>\n\
+        </tfoot>\n\
+      </table>\n\
+    </div>\n\
+    \n\
+    <!-- 弹窗底部操作栏 -->\n\
+    <div class="flex justify-between items-center p-5 border-t border-gray-100 flex-shrink-0">\n\
+      <div class="finance-summary-row">\n\
+        <span>📋 订单数: <strong>' + sorted.length + '</strong></span>\n\
+        <span>💰 总价合计: <strong style="color:#1d4ed8;">' + formatMoney(totalPriceSum) + ' 元</strong></span>\n\
+        <span>📥 已收合计: <strong style="color:#16a34a;">' + formatMoney(totalReceivedSum) + ' 元</strong></span>\n\
+        <span>⚠️ 未收合计: <strong style="color:' + (totalUnpaidSum > 0 ? '#dc2626' : '#16a34a') + ';">' + formatMoney(totalUnpaidSum) + ' 元</strong></span>\n\
+      </div>\n\
+      <div class="flex gap-2">\n\
+        <button class="btn-secondary text-sm" onclick="closeFinanceTableModal()">关闭</button>\n\
+        <button class="btn-primary text-sm" id="financeSaveAllBtn" onclick="financeSaveAllChanges()">\n\
+          💾 保存所有修改\n\
+        </button>\n\
+        <button class="btn-primary text-sm" style="background:#16a34a;" onclick="financeExportToExcel()">\n\
+          📥 导出Excel\n\
+        </button>\n\
+      </div>\n\
+    </div>\n\
+  ';
+
+  // 关闭页面滚动
+  document.body.classList.add('modal-open');
+  modal.classList.add('show');
+  modal.onclick = function (e) {
+    if (e.target === modal) closeFinanceTableModal();
+  };
+}
+
+/**
+ * 关闭财务对账表格弹窗
+ */
+function closeFinanceTableModal() {
+  // 检查是否有未保存修改
+  var hasChanges = false;
+  var plans = getPlans();
+  var keys = Object.keys(financeTableCache);
+  for (var i = 0; i < keys.length; i++) {
+    var plan = plans.find(function (p) { return p.id === keys[i]; });
+    if (!plan) continue;
+    var cache = financeTableCache[keys[i]];
+    if ((plan.unitPrice || 0) !== (cache.unitPrice || 0) ||
+        (plan.receivedAmount || 0) !== (cache.receivedAmount || 0) ||
+        (plan.financeRemark || '') !== (cache.financeRemark || '')) {
+      hasChanges = true;
+      break;
+    }
+  }
+
+  if (hasChanges) {
+    if (!confirm('表格中有未保存的修改，确定要关闭吗？未保存的修改将丢失。')) {
+      return;
+    }
+  }
+
+  var modal = document.getElementById('financeTableModal');
+  if (modal) modal.classList.remove('show');
+  financeTableCache = {};
+  document.body.classList.remove('modal-open');
+}
+
+/**
+ * 财务表格单元格聚焦（记录原始值）
+ */
+function financeTableCellFocus(input) {
+  // 聚焦时不做特殊处理，让用户直接编辑
+  input.classList.remove('changed');
+}
+
+/**
+ * 财务表格单元格值改变（实时计算）
+ * @param {HTMLInputElement} input
+ */
+function financeTableCellChanged(input) {
+  var planId = input.getAttribute('data-id');
+  var field = input.getAttribute('data-field');
+
+  if (!planId || !field || !financeTableCache[planId]) return;
+
+  var plan = getPlanById(planId);
+  if (!plan) return;
+
+  // 更新缓存
+  if (field === 'unitPrice' || field === 'receivedAmount') {
+    financeTableCache[planId][field] = parseFloat(input.value) || 0;
+  } else if (field === 'financeRemark') {
+    financeTableCache[planId][field] = input.value.trim();
+  }
+
+  // 标记为已修改
+  input.classList.add('changed');
+
+  // 实时计算该行的总价和未收
+  var cache = financeTableCache[planId];
+  var qty = Number(plan.quantity) || 0;
+  var unitPrice = cache.unitPrice || 0;
+  var received = cache.receivedAmount || 0;
+  var calcTotal = unitPrice * qty;
+  var calcUnpaid = calcTotal - received;
+  if (calcUnpaid < 0) calcUnpaid = 0;
+
+  // 更新行内显示
+  var totalCell = document.getElementById('ftTotal_' + planId);
+  var unpaidCell = document.getElementById('ftUnpaid_' + planId);
+  var settleBadge = document.getElementById('ftSettle_' + planId);
+
+  if (totalCell) {
+    totalCell.textContent = formatMoney(calcTotal);
+    totalCell.className = 'finance-calc-cell ' + (calcTotal > 0 ? 'positive' : 'zero');
+  }
+  if (unpaidCell) {
+    unpaidCell.textContent = formatMoney(calcUnpaid);
+    unpaidCell.className = 'finance-calc-cell ' + (calcUnpaid > 0 ? 'negative' : 'positive');
+  }
+
+  // 更新结算状态徽章
+  if (settleBadge) {
+    var settleKey;
+    if (calcTotal <= 0) {
+      settleKey = 'unsettled';
+    } else if (received >= calcTotal) {
+      settleKey = 'settled';
+    } else if (received > 0) {
+      settleKey = 'partial';
+    } else {
+      settleKey = 'unsettled';
+    }
+    settleBadge.textContent = getSettleLabel(settleKey);
+    settleBadge.className = 'settle-badge ' + getSettleClass(settleKey);
+  }
+
+  // 更新底部合计
+  recalcFinanceFooter();
+}
+
+/**
+ * 重新计算财务表格底部合计行
+ */
+function recalcFinanceFooter() {
+  var plans = getPlans();
+  var totalPriceSum = 0;
+  var totalReceivedSum = 0;
+  var totalUnpaidSum = 0;
+
+  plans.forEach(function (plan) {
+    var cache = financeTableCache[plan.id];
+    if (cache) {
+      var qty = Number(plan.quantity) || 0;
+      var unitPrice = cache.unitPrice || 0;
+      var received = cache.receivedAmount || 0;
+      var calcTotal = unitPrice * qty;
+      var calcUnpaid = calcTotal - received;
+      if (calcUnpaid < 0) calcUnpaid = 0;
+      totalPriceSum += calcTotal;
+      totalReceivedSum += received;
+      totalUnpaidSum += calcUnpaid;
+    } else {
+      totalPriceSum += Number(plan.totalPrice) || 0;
+      totalReceivedSum += Number(plan.receivedAmount) || 0;
+      totalUnpaidSum += Number(plan.unpaidAmount) || 0;
+    }
+  });
+
+  var footTotal = document.getElementById('ftFootTotalPrice');
+  var footReceived = document.getElementById('ftFootReceived');
+  var footUnpaid = document.getElementById('ftFootUnpaid');
+
+  if (footTotal) footTotal.textContent = formatMoney(totalPriceSum);
+  if (footReceived) footReceived.textContent = formatMoney(totalReceivedSum);
+  if (footUnpaid) {
+    footUnpaid.textContent = formatMoney(totalUnpaidSum);
+    footUnpaid.style.color = totalUnpaidSum > 0 ? '#dc2626' : '#16a34a';
+  }
+
+  // 更新底部摘要
+  var summaryEls = document.querySelectorAll('.finance-summary-row strong');
+  if (summaryEls.length >= 3) {
+    summaryEls[1].textContent = formatMoney(totalPriceSum) + ' 元';
+    summaryEls[2].textContent = formatMoney(totalReceivedSum) + ' 元';
+    summaryEls[3].textContent = formatMoney(totalUnpaidSum) + ' 元';
+    summaryEls[3].style.color = totalUnpaidSum > 0 ? '#dc2626' : '#16a34a';
+  }
+}
+
+/**
+ * 保存所有财务修改
+ */
+function financeSaveAllChanges() {
+  var plans = getPlans();
+  var savedCount = 0;
+
+  var keys = Object.keys(financeTableCache);
+  for (var i = 0; i < keys.length; i++) {
+    var planId = keys[i];
+    var cache = financeTableCache[planId];
+    var plan = plans.find(function (p) { return p.id === planId; });
+    if (!plan) continue;
+
+    // 检查是否有变化
+    if ((plan.unitPrice || 0) === (cache.unitPrice || 0) &&
+        (plan.receivedAmount || 0) === (cache.receivedAmount || 0) &&
+        (plan.financeRemark || '') === (cache.financeRemark || '')) {
+      continue;
+    }
+
+    // 保存财务数据
+    updatePlanFinance(planId, {
+      unitPrice: cache.unitPrice,
+      receivedAmount: cache.receivedAmount,
+      financeRemark: cache.financeRemark
+    });
+    savedCount++;
+  }
+
+  if (savedCount > 0) {
+    showToast('财务数据保存成功！共更新 ' + savedCount + ' 条记录', 'success');
+    // 更新缓存以匹配已保存数据
+    var updatedPlans = getPlans();
+    financeTableCache = {};
+    updatedPlans.forEach(function (p) {
+      financeTableCache[p.id] = {
+        unitPrice: p.unitPrice || 0,
+        receivedAmount: p.receivedAmount || 0,
+        financeRemark: p.financeRemark || ''
+      };
+    });
+    // 清除所有 changed 标记
+    var inputs = document.querySelectorAll('.finance-table-input.changed');
+    inputs.forEach(function (inp) { inp.classList.remove('changed'); });
+    // 刷新列表
+    refreshList();
+  } else {
+    showToast('没有需要保存的修改', 'info');
+  }
+}
+
+/**
+ * 从财务表格导出 Excel 文件
+ */
+function financeExportToExcel() {
+  // 先检查是否有未保存的修改
+  var hasChanges = false;
+  var plans = getPlans();
+  var keys = Object.keys(financeTableCache);
+  for (var i = 0; i < keys.length; i++) {
+    var plan = plans.find(function (p) { return p.id === keys[i]; });
+    if (!plan) continue;
+    var cache = financeTableCache[keys[i]];
+    if ((plan.unitPrice || 0) !== (cache.unitPrice || 0) ||
+        (plan.receivedAmount || 0) !== (cache.receivedAmount || 0) ||
+        (plan.financeRemark || '') !== (cache.financeRemark || '')) {
+      hasChanges = true;
+      break;
+    }
+  }
+
+  if (hasChanges) {
+    if (!confirm('表格中有未保存的修改。\n\n点击「确定」：先保存修改再导出\n点击「取消」：仅导出已保存的数据')) {
+      // 用户选择不保存，使用已存储数据导出
+      doFinanceExport(plans);
+      return;
+    }
+    // 先保存
+    financeSaveAllChanges();
+    plans = getPlans(); // 重新获取最新数据
+  }
+
+  doFinanceExport(plans);
+}
+
+/**
+ * 执行财务 Excel 导出
+ */
+function doFinanceExport(plans) {
+  if (plans.length === 0) {
+    showToast('暂无数据可导出', 'warning');
+    return;
+  }
+
+  var BOM = '\uFEFF';
+  var headers = [
+    '计划编号', '钢材类型', '规格', '数量', '单位',
+    '钢材单价(元)', '总价(元)', '已收金额(元)', '未收欠款(元)',
+    '结算状态', '对账备注', '当前工序', '进度状态',
+    '客户', '交货日期', '创建时间'
+  ];
+
+  var processStepMap = {};
+  PROCESS_STEPS.forEach(function (s) { processStepMap[s.key] = s.label; });
+
+  var rows = [headers.join(',')];
+
+  plans.forEach(function (plan) {
+    // 如果有缓存则使用缓存值
+    var cache = financeTableCache[plan.id];
+    var unitPrice = cache ? (cache.unitPrice || 0) : (plan.unitPrice || 0);
+    var totalPrice, received, unpaid, settleStatus;
+    if (cache) {
+      var qty = Number(plan.quantity) || 0;
+      totalPrice = unitPrice * qty;
+      received = cache.receivedAmount || 0;
+      unpaid = totalPrice - received;
+      if (unpaid < 0) unpaid = 0;
+      if (totalPrice <= 0) settleStatus = 'unsettled';
+      else if (received >= totalPrice) settleStatus = 'settled';
+      else if (received > 0) settleStatus = 'partial';
+      else settleStatus = 'unsettled';
+    } else {
+      totalPrice = plan.totalPrice || 0;
+      received = plan.receivedAmount || 0;
+      unpaid = plan.unpaidAmount || 0;
+      settleStatus = plan.settleStatus || 'unsettled';
+    }
+
+    var row = [
+      csvEscape(plan.planNo),
+      csvEscape(plan.steelType),
+      csvEscape(plan.specification),
+      plan.quantity,
+      csvEscape(plan.unit),
+      Number(unitPrice).toFixed(2),
+      Number(totalPrice).toFixed(2),
+      Number(received).toFixed(2),
+      Number(unpaid).toFixed(2),
+      csvEscape(getSettleLabel(settleStatus)),
+      csvEscape(cache ? (cache.financeRemark || '') : (plan.financeRemark || '-')),
+      csvEscape(processStepMap[plan.processStep] || '-'),
+      csvEscape((PROGRESS_STATUS[plan.progressStatus] || PROGRESS_STATUS.pending).label),
+      csvEscape(plan.customer || '-'),
+      csvEscape(plan.deliveryDate),
+      csvEscape(plan.createdAt ? plan.createdAt.slice(0, 10) : '-')
+    ];
+    rows.push(row.join(','));
+  });
+
+  try {
+    var csvStr = BOM + rows.join('\n');
+    var blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'steel_finance_' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('财务账单导出成功！共 ' + plans.length + ' 条记录', 'success');
+  } catch (err) {
+    showToast('导出失败: ' + err.message, 'error');
   }
 }
