@@ -1560,8 +1560,33 @@ table {
     gap: 0.75rem;
   }
 
+  /* 统计栏改为2列 */
+  #statsBar {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.5rem !important;
+  }
+  #statsBar > div {
+    padding: 0.75rem 0.5rem !important;
+  }
+  #statsBar .text-2xl {
+    font-size: 1.25rem !important;
+  }
+
   .progress-stat-panel {
     grid-template-columns: 1fr 1fr;
+  }
+
+  /* 筛选栏优化 */
+  .filter-bar {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  .filter-bar .filter-input {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  .filter-bar select {
+    width: 100% !important;
   }
 
   /* 弹窗全屏适配 */
@@ -1607,7 +1632,8 @@ table {
   }
 
   .progress-nav-btn {
-    padding: 0.75rem 1.25rem;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.8125rem;
   }
 
   /* 表单移动端 */
@@ -1616,6 +1642,11 @@ table {
   .form-textarea {
     padding: 0.875rem 1rem;
     font-size: 1rem;
+  }
+
+  /* 表单卡片减小内边距 */
+  #productionForm {
+    padding: 1rem !important;
   }
 
   /* 客服全屏 */
@@ -1664,6 +1695,23 @@ table {
   }
 
   .finance-table { font-size: 0.75rem; }
+
+  /* 财务底部摘要小屏换行 */
+  .finance-summary-row {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  /* 进度弹窗内容区域减小内边距 */
+  .progress-modal-body {
+    padding: 0.75rem !important;
+  }
+
+  /* 预警面板小屏 */
+  #alertPanel .flex.items-center.gap-2 {
+    flex-wrap: wrap;
+  }
 }
 
 @media (min-width: 641px) {

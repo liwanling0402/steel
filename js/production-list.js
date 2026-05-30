@@ -45,10 +45,10 @@ function renderList() {
 
   container.innerHTML = '\
     <!-- 筛选工具栏 -->\
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 mb-4">\
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-5 mb-4">\
       <div class="filter-bar">\
         <!-- 搜索框 -->\
-        <div class="filter-input relative">\
+        <div class="filter-input relative" style="flex:1 1 100%;min-width:0;">\
           <input\
             type="text"\
             id="searchInput"\
@@ -59,7 +59,7 @@ function renderList() {
         </div>\
         \
         <!-- 状态筛选 -->\
-        <select id="statusFilter" class="form-select" style="width:auto;min-width:130px;">\
+        <select id="statusFilter" class="form-select" style="width:auto;min-width:120px;flex:0 0 auto;">\
           <option value="all">全部状态</option>\
           <option value="pending">待生产</option>\
           <option value="processing">生产中</option>\
@@ -68,17 +68,20 @@ function renderList() {
         </select>\
         \
         <!-- 操作按钮 -->\
-        <div class="flex gap-2 flex-shrink-0 flex-wrap">\
-          <button class="btn-secondary text-sm py-2 px-3" onclick="handleExportData()" title="导出JSON数据">\
-            📥 导出\
+        <div class="flex gap-1.5 sm:gap-2 flex-shrink-0 flex-wrap" style="width:100%;">\
+          <button class="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3 flex-1 sm:flex-none" onclick="handleExportData()" title="导出JSON数据">\
+            📥<span class="hidden sm:inline"> 导出</span>\
           </button>\
-          <button class="btn-primary text-sm py-2 px-3" onclick="openFinanceTableModal()" title="打开财务对账在线编辑表格">\
-            💰 财务对账\
+          <button class="btn-primary text-xs sm:text-sm py-2 px-2 sm:px-3 flex-1 sm:flex-none" onclick="openFinanceTableModal()" title="打开财务对账在线编辑表格">\
+            💰<span class="hidden sm:inline"> 财务对账</span>\
           </button>\
-          <button class="btn-secondary text-sm py-2 px-3" onclick="document.getElementById(\'importFile\').click()" title="导入数据">\
-            📤 导入\
+          <button class="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3 flex-1 sm:flex-none" onclick="document.getElementById(\'importFile\').click()" title="导入数据">\
+            📤<span class="hidden sm:inline"> 导入</span>\
           </button>\
-          \r\n          <button class=\"btn-secondary text-sm py-2 px-3\" onclick=\"openHistoryModal()\" title=\"查看历史存档数据\">\r\n            📅 历史\r\n          </button>\r\n          <input type="file" id="importFile" accept=".json" class="hidden" onchange="handleImport(event)" />\
+          <button class="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3 flex-1 sm:flex-none" onclick="openHistoryModal()" title="查看历史存档数据">\
+            📅<span class="hidden sm:inline"> 历史</span>\
+          </button>\
+          <input type="file" id="importFile" accept=".json" class="hidden" onchange="handleImport(event)" />\
         </div>\
       </div>\
     </div>\
@@ -880,20 +883,20 @@ function openProgressModal(id) {
     </div>\
     \
     <!-- 订单信息摘要 -->\
-    <div class="px-5 py-3 bg-gray-50 border-b border-gray-100 flex-shrink-0">\
-      <div class="flex flex-wrap items-center justify-between gap-2">\
-        <div class="flex items-center space-x-3 flex-wrap">\
+    <div class="px-3 sm:px-5 py-3 bg-gray-50 border-b border-gray-100 flex-shrink-0">\
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">\
+        <div class="flex items-center gap-2 flex-wrap text-xs sm:text-sm">\
           <span class="font-bold text-gray-800">' + escapeHtml(plan.planNo) + '</span>\
-          <span class="text-sm text-gray-500">' + escapeHtml(plan.steelType) + '</span>\
-          <span class="text-sm text-gray-400">' + escapeHtml(plan.specification) + '</span>\
-          <span class="text-sm text-gray-500">' + plan.quantity + ' ' + escapeHtml(plan.unit) + '</span>\
+          <span class="text-gray-500">' + escapeHtml(plan.steelType) + '</span>\
+          <span class="text-gray-400 hidden sm:inline">' + escapeHtml(plan.specification) + '</span>\
+          <span class="text-gray-500">' + plan.quantity + ' ' + escapeHtml(plan.unit) + '</span>\
         </div>\
-        <div class="flex items-center space-x-2">\
-          <button class="progress-nav-btn" onclick="navigateProgress(\'' + prevId + '\')"' + prevDisabled + ' title="上一单">\
+        <div class="flex items-center gap-1 sm:gap-2 w-full sm:w-auto">\
+          <button class="progress-nav-btn flex-1 sm:flex-none text-xs sm:text-sm" onclick="navigateProgress(\'' + prevId + '\')"' + prevDisabled + ' title="上一单">\
             ◀ 上一单\
           </button>\
-          <span class="text-xs text-gray-400">' + (currentIndex + 1) + '/' + progressPlansCache.length + '</span>\
-          <button class="progress-nav-btn" onclick="navigateProgress(\'' + nextId + '\')"' + nextDisabled + ' title="下一单">\
+          <span class="text-xs text-gray-400 whitespace-nowrap">' + (currentIndex + 1) + '/' + progressPlansCache.length + '</span>\
+          <button class="progress-nav-btn flex-1 sm:flex-none text-xs sm:text-sm" onclick="navigateProgress(\'' + nextId + '\')"' + nextDisabled + ' title="下一单">\
             下一单 ▶\
           </button>\
         </div>\
@@ -1507,14 +1510,14 @@ function openDetailModal(id) {
     </div>\
     \
     <!-- 弹窗底部按钮 -->\
-    <div class="flex justify-between items-center p-5 border-t border-gray-100 flex-shrink-0">\
-      <div class="flex space-x-2">\
-        <button class="btn-secondary text-sm" onclick="openEditModal(\'' + plan.id + '\')">✏️ 编辑</button>\
-        <button class="btn-secondary text-sm" onclick="openDeleteModal(\'' + plan.id + '\')">🗑️ 删除</button>\
+    <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 p-4 sm:p-5 border-t border-gray-100 flex-shrink-0">\
+      <div class="flex gap-2">\
+        <button class="btn-secondary text-xs sm:text-sm flex-1 sm:flex-none" onclick="openEditModal(\'' + plan.id + '\')">✏️ 编辑</button>\
+        <button class="btn-secondary text-xs sm:text-sm flex-1 sm:flex-none" onclick="openDeleteModal(\'' + plan.id + '\')">🗑️ 删除</button>\
       </div>\
-      <div class="flex space-x-2">\
-        <button class="btn-primary text-sm" onclick="closeDetailModal(); openFinanceTableModal()">💰 财务对账</button>\
-        <button class="btn-secondary" onclick="closeDetailModal()">关闭</button>\
+      <div class="flex gap-2">\
+        <button class="btn-primary text-xs sm:text-sm flex-1 sm:flex-none" onclick="closeDetailModal(); openFinanceTableModal()">💰 财务对账</button>\
+        <button class="btn-secondary text-xs sm:text-sm flex-1 sm:flex-none" onclick="closeDetailModal()">关闭</button>\
       </div>\
     </div>\
   ';
@@ -1872,19 +1875,18 @@ function openFinanceTableModal() {
     </div>\n\
     \n\
     <!-- 弹窗底部操作栏 -->\n\
-    <div class="flex justify-between items-center p-5 border-t border-gray-100 flex-shrink-0">\n\
-      <div class="finance-summary-row">\n\
+    <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 p-4 sm:p-5 border-t border-gray-100 flex-shrink-0">\n\
+      <div class="finance-summary-row" style="justify-content:center;text-align:center;">\n\
         <span>📋 订单数: <strong>' + sorted.length + '</strong></span>\n\
-        <span>💰 总价合计: <strong style="color:#1d4ed8;">' + formatMoney(totalPriceSum) + ' 元</strong></span>\n\
-        <span>📥 已收合计: <strong style="color:#16a34a;">' + formatMoney(totalReceivedSum) + ' 元</strong></span>\n\
-        <span>⚠️ 未收合计: <strong style="color:' + (totalUnpaidSum > 0 ? '#dc2626' : '#16a34a') + ';">' + formatMoney(totalUnpaidSum) + ' 元</strong></span>\n\
+        <span>💰 总价合计: <strong style="color:#1d4ed8;">' + formatMoney(totalPriceSum) + '</strong></span>\n\
+        <span>📥 已收合计: <strong style="color:#16a34a;">' + formatMoney(totalReceivedSum) + '</strong></span>\n\
       </div>\n\
-      <div class="flex gap-2">\n\
-        <button class="btn-secondary text-sm" onclick="closeFinanceTableModal()">关闭</button>\n\
-        <button class="btn-primary text-sm" id="financeSaveAllBtn" onclick="financeSaveAllChanges()">\n\
+      <div class="flex gap-2 justify-center sm:justify-end flex-wrap">\n\
+        <button class="btn-secondary text-xs sm:text-sm flex-1 sm:flex-none" onclick="closeFinanceTableModal()">关闭</button>\n\
+        <button class="btn-primary text-xs sm:text-sm flex-1 sm:flex-none" id="financeSaveAllBtn" onclick="financeSaveAllChanges()">\n\
           💾 保存所有修改\n\
         </button>\n\
-        <button class="btn-primary text-sm" style="background:#16a34a;" onclick="financeExportToExcel()">\n\
+        <button class="btn-primary text-xs sm:text-sm flex-1 sm:flex-none" style="background:#16a34a;" onclick="financeExportToExcel()">\n\
           📥 导出Excel\n\
         </button>\n\
       </div>\n\

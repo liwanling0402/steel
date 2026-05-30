@@ -28,7 +28,7 @@ function renderForm() {
       </div>\
       \
       <!-- 表单字段区 -->\
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">\
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">\
         \
         <!-- 计划编号 -->\
         <div class="md:col-span-2">\
@@ -177,10 +177,10 @@ function renderForm() {
       \
       <!-- 提交按钮区 -->\
       <div class="flex flex-col sm:flex-row sm:justify-end gap-3 mt-6 pt-4 border-t border-gray-100">\
-        <button type="button" class="btn-secondary" onclick="resetForm()">\
+        <button type="button" class="btn-secondary w-full sm:w-auto" onclick="resetForm()">\
           🔄 重置表单\
         </button>\
-        <button type="submit" class="btn-primary" id="submitBtn">\
+        <button type="submit" class="btn-primary w-full sm:w-auto" id="submitBtn">\
           ✅ 提交计划\
         </button>\
       </div>\
