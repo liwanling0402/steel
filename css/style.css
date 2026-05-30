@@ -162,7 +162,8 @@
 #editModal.show,
 #deleteModal.show,
 #progressModal.show,
-#confirmProgressModal.show {
+#confirmProgressModal.show,
+#searchResultModal.show {
   display: flex !important;
   animation: fadeIn 0.2s ease-out;
 }

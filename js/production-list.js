@@ -364,15 +364,24 @@ function bindListEvents() {
   var searchInput = document.getElementById('searchInput');
   var statusFilter = document.getElementById('statusFilter');
 
-  var handler = function () {
+  // 搜索防抖定时器
+  var searchTimer = null;
+  var lastSearchKeyword = '';
+
+  var doSearch = function () {
     var keyword = (searchInput && searchInput.value || '').toLowerCase().trim();
     var status = statusFilter && statusFilter.value || 'all';
 
+    // 如果关键词和状态都没变，跳过
+    if (keyword === lastSearchKeyword && status === (statusFilter._lastStatus || 'all')) return;
+    lastSearchKeyword = keyword;
+    if (statusFilter) statusFilter._lastStatus = status;
+
     var plans = getPlans();
+    var totalBefore = plans.length;
     var filtered = plans.filter(function (plan) {
       if (status !== 'all' && plan.status !== status) return false;
       if (keyword) {
-        // 扩展搜索范围：编号、钢材类型、规格、客户、备注、工序名、进度状态名
         var stepLabel = getStepLabel(plan.processStep);
         var progressLabel = getProgressLabel(plan.progressStatus);
         var statusLabel = (plan.status === 'pending' ? '待生产' : plan.status === 'processing' ? '生产中' : plan.status === 'completed' ? '已完成' : plan.status === 'cancelled' ? '已取消' : plan.status);
@@ -382,13 +391,40 @@ function bindListEvents() {
       return true;
     });
 
+    // 搜索反馈弹窗
+    if (keyword) {
+      if (filtered.length === 0) {
+        // 无结果
+        showSearchResultModal('no_result', keyword, totalBefore, status);
+      } else {
+        // 有结果
+        showSearchResultModal('found', keyword, filtered.length, status);
+      }
+    } else if (status !== 'all') {
+      // 仅按状态筛选时，只显示条数提示
+      if (filtered.length === 0) {
+        showSearchResultModal('no_status', '', 0, status);
+      }
+    }
+
     renderProgressStats(filtered);
     renderStats(filtered);
     renderListContent(filtered);
   };
 
-  if (searchInput) searchInput.addEventListener('input', handler);
-  if (statusFilter) statusFilter.addEventListener('change', handler);
+  if (searchInput) {
+    searchInput.addEventListener('input', function () {
+      // 防抖：300ms 内连续输入只执行最后一次
+      if (searchTimer) clearTimeout(searchTimer);
+      searchTimer = setTimeout(doSearch, 300);
+    });
+  }
+  if (statusFilter) {
+    statusFilter.addEventListener('change', function () {
+      if (searchTimer) clearTimeout(searchTimer);
+      doSearch();
+    });
+  }
 }
 
 /**
@@ -404,6 +440,7 @@ function refreshList() {
   var st = statusFilter ? statusFilter.value : 'all';
 
   var plans = getPlans();
+  var totalBefore = plans.length;
   var filtered = plans.filter(function (plan) {
     if (st !== 'all' && plan.status !== st) return false;
     if (kw) {
@@ -1179,4 +1216,68 @@ function handleExportExcel() {
   } else if (result && result.message) {
     showToast(result.message, 'warning');
   }
+}
+
+// ==========================================
+// 搜索反馈弹窗
+// ==========================================
+
+/**
+ * 显示搜索结果弹窗
+ * @param {string} type - 'no_result' | 'found' | 'no_status'
+ * @param {string} keyword - 搜索关键词
+ * @param {number} count - 结果数量
+ * @param {string} status - 当前状态筛选值
+ */
+function showSearchResultModal(type, keyword, count, status) {
+  var modal = document.getElementById('searchResultModal');
+  var content = document.getElementById('searchResultContent');
+  if (!modal || !content) return;
+
+  var statusLabels = {
+    all: '全部状态',
+    pending: '待生产',
+    processing: '生产中',
+    completed: '已完成',
+    cancelled: '已取消'
+  };
+  var statusLabel = statusLabels[status] || '全部状态';
+
+  var icon, title, detail;
+
+  if (type === 'no_result') {
+    icon = '🔍';
+    title = '未查询到结果';
+    detail = '关键词「<b>' + escapeHtml(keyword) + '</b>」在 <b>' + statusLabel + '</b> 中未找到匹配的生产计划。<br>请尝试修改搜索条件或检查关键字是否正确。';
+  } else if (type === 'no_status') {
+    icon = '📋';
+    title = '暂无数据';
+    detail = '当前「<b>' + statusLabel + '</b>」分类下没有生产计划记录。';
+  } else {
+    icon = '✅';
+    title = '查询结果';
+    detail = '关键词「<b>' + escapeHtml(keyword) + '</b>」在 <b>' + statusLabel + '</b> 中<br>共找到 <span class="text-blue-600 font-bold text-lg">' + count + '</span> 条匹配的生产计划。';
+  }
+
+  content.innerHTML = '\
+    <div class="text-5xl mb-4">' + icon + '</div>\n\
+    <h3 class="text-lg font-bold text-gray-800 mb-3">' + title + '</h3>\n\
+    <p class="text-gray-600 text-sm leading-relaxed mb-5">' + detail + '</p>\n\
+    <button class="px-6 py-2.5 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors min-h-[44px]" onclick="closeSearchResultModal()">\n\
+      确定\n\
+    </button>\n\
+  ';
+
+  modal.classList.add('show');
+  modal.onclick = function (e) {
+    if (e.target === modal) closeSearchResultModal();
+  };
+}
+
+/**
+ * 关闭搜索反馈弹窗
+ */
+function closeSearchResultModal() {
+  var modal = document.getElementById('searchResultModal');
+  if (modal) modal.classList.remove('show');
 }

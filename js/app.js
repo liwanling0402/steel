@@ -111,13 +111,19 @@ function bindKeyboardShortcuts() {
       return;
     }
 
-    // Escape 关闭弹窗（优先级：二次确认 > 进度弹窗 > 编辑弹窗 > 删除弹窗）
+    // Escape 关闭弹窗（优先级：搜索结果 > 二次确认 > 进度弹窗 > 编辑弹窗 > 删除弹窗）
     if (e.key === 'Escape') {
+      var searchResultModal = document.getElementById('searchResultModal');
       var confirmProgressModal = document.getElementById('confirmProgressModal');
       var progressModal = document.getElementById('progressModal');
       var editModal = document.getElementById('editModal');
       var deleteModal = document.getElementById('deleteModal');
 
+      if (searchResultModal && searchResultModal.classList.contains('show')) {
+        e.preventDefault();
+        closeSearchResultModal();
+        return;
+      }
       if (confirmProgressModal && confirmProgressModal.classList.contains('show')) {
         e.preventDefault();
         closeConfirmProgressModal();
