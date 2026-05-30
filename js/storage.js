@@ -1,7 +1,7 @@
 /* ==========================================
    Steel 钢材管理系统 - 数据存储层
    封装所有 localStorage 读写操作
-   v2.0 - 新增工序、进度状态、操作日志
+   v2.2 - 新增财务模块（仅三级详情弹窗展示）
    ========================================== */
 
 var STORAGE_KEY = 'steel_production_plans';
@@ -50,6 +50,14 @@ function normalizePlan(plan) {
     customer: plan.customer || '',
     remark: plan.remark || '',
     operationLogs: plan.operationLogs || [],
+    // 财务字段（默认空，仅三级弹窗操作）
+    unitPrice: Number(plan.unitPrice) || 0,
+    totalPrice: Number(plan.totalPrice) || 0,
+    receivedAmount: Number(plan.receivedAmount) || 0,
+    unpaidAmount: Number(plan.unpaidAmount) || 0,
+    settleStatus: plan.settleStatus || 'unsettled',
+    financeRemark: plan.financeRemark || '',
+    financeLogs: plan.financeLogs || [],
     createdAt: plan.createdAt || new Date().toISOString(),
     updatedAt: plan.updatedAt || plan.createdAt || new Date().toISOString()
   };
@@ -121,6 +129,14 @@ function addPlan(planData) {
     customer: planData.customer || '',
     remark: planData.remark || '',
     operationLogs: [],
+    // 财务字段（默认空）
+    unitPrice: 0,
+    totalPrice: 0,
+    receivedAmount: 0,
+    unpaidAmount: 0,
+    settleStatus: 'unsettled',
+    financeRemark: '',
+    financeLogs: [],
     createdAt: now,
     updatedAt: now
   };
@@ -156,6 +172,14 @@ function updatePlan(id, planData) {
     customer: planData.customer !== undefined ? planData.customer : existing.customer,
     remark: planData.remark !== undefined ? planData.remark : existing.remark,
     operationLogs: planData.operationLogs !== undefined ? planData.operationLogs : (existing.operationLogs || []),
+    // 财务字段
+    unitPrice: planData.unitPrice !== undefined ? Number(planData.unitPrice) : (existing.unitPrice || 0),
+    totalPrice: planData.totalPrice !== undefined ? Number(planData.totalPrice) : (existing.totalPrice || 0),
+    receivedAmount: planData.receivedAmount !== undefined ? Number(planData.receivedAmount) : (existing.receivedAmount || 0),
+    unpaidAmount: planData.unpaidAmount !== undefined ? Number(planData.unpaidAmount) : (existing.unpaidAmount || 0),
+    settleStatus: planData.settleStatus !== undefined ? planData.settleStatus : (existing.settleStatus || 'unsettled'),
+    financeRemark: planData.financeRemark !== undefined ? planData.financeRemark : (existing.financeRemark || ''),
+    financeLogs: planData.financeLogs !== undefined ? planData.financeLogs : (existing.financeLogs || []),
     createdAt: existing.createdAt,
     updatedAt: now
   };
@@ -445,4 +469,169 @@ function getSteelTypesDatalistHtml() {
     html += '<option value="' + escapeHtml(t) + '">';
   });
   return html;
+}
+
+// ==========================================
+// 财务模块 — 结算状态定义与计算
+// ==========================================
+
+/**
+ * 结算状态定义
+ */
+var SETTLE_STATUS = {
+  unsettled:  { label: '未结算',   color: '#ef4444', bg: '#fef2f2', cssClass: 'settle-unsettled' },
+  partial:    { label: '部分结算', color: '#f59e0b', bg: '#fffbeb', cssClass: 'settle-partial' },
+  settled:    { label: '已结清',   color: '#16a34a', bg: '#f0fdf4', cssClass: 'settle-settled' }
+};
+
+/**
+ * 自动计算结算状态
+ * @param {Object} plan - 计划对象
+ * @returns {string} 结算状态 key
+ */
+function calcSettleStatus(plan) {
+  var totalPrice = Number(plan.totalPrice) || 0;
+  var received = Number(plan.receivedAmount) || 0;
+  if (totalPrice <= 0) return 'unsettled';
+  if (received >= totalPrice) return 'settled';
+  if (received > 0) return 'partial';
+  return 'unsettled';
+}
+
+/**
+ * 获取结算状态标签
+ * @param {string} statusKey
+ * @returns {string}
+ */
+function getSettleLabel(statusKey) {
+  return (SETTLE_STATUS[statusKey] || SETTLE_STATUS.unsettled).label;
+}
+
+/**
+ * 获取结算状态 CSS 类
+ * @param {string} statusKey
+ * @returns {string}
+ */
+function getSettleClass(statusKey) {
+  return (SETTLE_STATUS[statusKey] || SETTLE_STATUS.unsettled).cssClass;
+}
+
+/**
+ * 获取结算状态颜色
+ * @param {string} statusKey
+ * @returns {string}
+ */
+function getSettleColor(statusKey) {
+  return (SETTLE_STATUS[statusKey] || SETTLE_STATUS.unsettled).color;
+}
+
+/**
+ * 获取结算状态背景色
+ * @param {string} statusKey
+ * @returns {string}
+ */
+function getSettleBg(statusKey) {
+  return (SETTLE_STATUS[statusKey] || SETTLE_STATUS.unsettled).bg;
+}
+
+/**
+ * 更新计划的财务数据（独立于生产数据）
+ * @param {string} id - 计划 ID
+ * @param {Object} financeData - 财务数据 { unitPrice, receivedAmount, financeRemark }
+ * @returns {Object|null}
+ */
+function updatePlanFinance(id, financeData) {
+  var plan = getPlanById(id);
+  if (!plan) return null;
+
+  var unitPrice = financeData.unitPrice !== undefined ? Number(financeData.unitPrice) : (plan.unitPrice || 0);
+  var totalPrice = unitPrice * (Number(plan.quantity) || 0);
+  var receivedAmount = financeData.receivedAmount !== undefined ? Number(financeData.receivedAmount) : (plan.receivedAmount || 0);
+  var unpaidAmount = totalPrice - receivedAmount;
+  if (unpaidAmount < 0) unpaidAmount = 0;
+  var settleStatus = calcSettleStatus({
+    totalPrice: totalPrice,
+    receivedAmount: receivedAmount
+  });
+
+  // 记录财务操作日志
+  var financeLogs = (plan.financeLogs || []).slice();
+  financeLogs.push({
+    timestamp: new Date().toISOString(),
+    action: '更新财务数据',
+    detail: '单价:' + unitPrice + ' 总价:' + totalPrice + ' 已收:' + receivedAmount + ' 未收:' + unpaidAmount + ' 状态:' + getSettleLabel(settleStatus)
+  });
+
+  return updatePlan(id, {
+    unitPrice: unitPrice,
+    totalPrice: totalPrice,
+    receivedAmount: receivedAmount,
+    unpaidAmount: unpaidAmount,
+    settleStatus: settleStatus,
+    financeRemark: financeData.financeRemark !== undefined ? financeData.financeRemark : (plan.financeRemark || ''),
+    financeLogs: financeLogs
+  });
+}
+
+/**
+ * 导出财务账单 Excel (CSV)
+ * 包含全套财务字段
+ */
+function exportFinanceExcel() {
+  var plans = getPlans();
+  if (plans.length === 0) {
+    return { success: false, count: 0, message: '暂无数据可导出' };
+  }
+
+  var BOM = '\uFEFF';
+  var headers = [
+    '计划编号', '钢材类型', '规格', '数量', '单位',
+    '钢材单价(元)', '单吨总价(元)', '已收金额(元)', '未收欠款(元)',
+    '结算状态', '对账备注', '当前工序', '进度状态', '生产状态',
+    '客户', '交货日期', '创建时间'
+  ];
+
+  var processStepMap = {};
+  PROCESS_STEPS.forEach(function (s) { processStepMap[s.key] = s.label; });
+
+  var rows = [headers.join(',')];
+
+  plans.forEach(function (plan) {
+    var row = [
+      csvEscape(plan.planNo),
+      csvEscape(plan.steelType),
+      csvEscape(plan.specification),
+      plan.quantity,
+      csvEscape(plan.unit),
+      (plan.unitPrice || 0).toFixed(2),
+      (plan.totalPrice || 0).toFixed(2),
+      (plan.receivedAmount || 0).toFixed(2),
+      (plan.unpaidAmount || 0).toFixed(2),
+      csvEscape(getSettleLabel(plan.settleStatus || 'unsettled')),
+      csvEscape(plan.financeRemark || '-'),
+      csvEscape(processStepMap[plan.processStep] || '-'),
+      csvEscape((PROGRESS_STATUS[plan.progressStatus] || PROGRESS_STATUS.pending).label),
+      csvEscape(getStatusLabel(plan.status)),
+      csvEscape(plan.customer || '-'),
+      csvEscape(plan.deliveryDate),
+      csvEscape(plan.createdAt ? plan.createdAt.slice(0, 10) : '-')
+    ];
+    rows.push(row.join(','));
+  });
+
+  try {
+    var csvStr = BOM + rows.join('\n');
+    var blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'steel_finance_export_' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return { success: true, count: plans.length, message: '财务账单导出成功！共 ' + plans.length + ' 条记录' };
+  } catch (err) {
+    return { success: false, count: 0, message: '导出失败: ' + err.message };
+  }
 }

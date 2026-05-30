@@ -570,3 +570,77 @@ button:disabled,
   cursor: not-allowed !important;
   pointer-events: none;
 }
+
+/* ---------- 三级详情弹窗 ---------- */
+#detailModal.show {
+  display: flex !important;
+  animation: fadeIn 0.2s ease-out;
+}
+
+#detailModal .detail-modal-body {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* 详情弹窗中的分区卡片 */
+.detail-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+}
+
+.detail-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+/* ---------- 结算状态徽章 ---------- */
+.settle-badge {
+  display: inline-block;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  letter-spacing: 0.025em;
+}
+
+.settle-unsettled {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.settle-partial {
+  background: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+
+.settle-settled {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+/* ---------- 详情弹窗响应式 ---------- */
+@media (max-width: 640px) {
+  #detailModal > div {
+    margin: 0.25rem !important;
+    max-height: 96vh !important;
+    border-radius: 0.75rem !important;
+  }
+
+  #detailModal .detail-modal-body {
+    max-height: 55vh;
+  }
+
+  /* 移动端单列布局 */
+  #detailModal .grid {
+    grid-template-columns: 1fr !important;
+  }
+}

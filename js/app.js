@@ -1,7 +1,7 @@
 /* ==========================================
    Steel 钢材管理系统 - 应用主入口
    负责：初始化、页面路由切换、全局状态
-   v2.0 - 进度弹窗快捷键支持
+   v2.2 - 三级详情弹窗（含财务模块）
    ========================================== */
 
 // 当前激活的页面
@@ -17,10 +17,10 @@ function initApp() {
   // 绑定键盘快捷键
   bindKeyboardShortcuts();
 
-  console.log('🏭 Steel 钢材管理系统 v2.0 已就绪');
+  console.log('🏭 Steel 钢材管理系统 v2.2 已就绪');
   console.log('   - 数据存储在浏览器 localStorage');
   console.log('   - 当前计划总数: ' + getPlanCount());
-  console.log('   - 新功能: 进度管理、工序跟踪、Excel导出');
+  console.log('   - 新功能: 三级详情弹窗、财务管理、财务账单导出');
 }
 
 /**
@@ -111,9 +111,10 @@ function bindKeyboardShortcuts() {
       return;
     }
 
-    // Escape 关闭弹窗（优先级：搜索结果 > 二次确认 > 进度弹窗 > 编辑弹窗 > 删除弹窗）
+    // Escape 关闭弹窗（优先级：搜索结果 > 三级详情 > 二次确认 > 进度弹窗 > 编辑弹窗 > 删除弹窗）
     if (e.key === 'Escape') {
       var searchResultModal = document.getElementById('searchResultModal');
+      var detailModal = document.getElementById('detailModal');
       var confirmProgressModal = document.getElementById('confirmProgressModal');
       var progressModal = document.getElementById('progressModal');
       var editModal = document.getElementById('editModal');
@@ -122,6 +123,11 @@ function bindKeyboardShortcuts() {
       if (searchResultModal && searchResultModal.classList.contains('show')) {
         e.preventDefault();
         closeSearchResultModal();
+        return;
+      }
+      if (detailModal && detailModal.classList.contains('show')) {
+        e.preventDefault();
+        if (typeof closeDetailModal === 'function') closeDetailModal();
         return;
       }
       if (confirmProgressModal && confirmProgressModal.classList.contains('show')) {

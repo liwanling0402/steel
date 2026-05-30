@@ -1,7 +1,6 @@
 /* ==========================================
    Steel 钢材管理系统 - 生产计划列表模块
-   v2.1 - 进度统计面板、进度弹窗、上一单/下一单、
-          行交互、Excel导出、操作日志、防误触
+   v2.2 - 三级详情弹窗（含财务模块）、进度管理
    ========================================== */
 
 // 当前编辑的 ID（null 表示新建模式）
@@ -20,6 +19,9 @@ var originalProgressStatus = null;
 var isSavingProgress = false;
 // 防重复编辑提交
 var isEditingSubmitting = false;
+// 三级详情弹窗相关
+var detailPlanId = null;
+var isDetailSaving = false;
 
 /**
  * 渲染生产计划列表页面
@@ -59,8 +61,11 @@ function renderList() {
           <button class="btn-secondary text-sm py-2 px-3" onclick="handleExportData()" title="导出JSON数据">\
             📥 导出\
           </button>\
-          <button class="btn-secondary text-sm py-2 px-3" onclick="handleExportExcel()" title="导出Excel(CSV)">\
+          <button class="btn-secondary text-sm py-2 px-3" onclick="handleExportExcel()" title="导出生产Excel(CSV)">\
             📊 Excel\
+          </button>\
+          <button class="btn-secondary text-sm py-2 px-3" onclick="handleExportFinanceExcel()" title="导出财务账单Excel(CSV)">\
+            💰 财务\
           </button>\
           <button class="btn-secondary text-sm py-2 px-3" onclick="document.getElementById(\'importFile\').click()" title="导入数据">\
             📤 导入\
@@ -291,7 +296,7 @@ function renderListContent(plans) {
     var stepLabel = getStepLabel(plan.processStep);
 
     tableHtml += '\
-          <tr class="table-row-clickable hover:bg-gray-50 transition-colors" data-id="' + plan.id + '" onclick="openProgressModal(\'' + plan.id + '\')" title="点击管理进度">\
+          <tr class="table-row-clickable hover:bg-gray-50 transition-colors" data-id="' + plan.id + '" onclick="openDetailModal(\'' + plan.id + '\')" title="点击查看订单详情">\
             <td class="px-3 py-3 font-medium text-gray-800">' + escapeHtml(plan.planNo) + '</td>\
             <td class="px-3 py-3 text-gray-600">' + escapeHtml(plan.steelType) + '</td>\
             <td class="px-3 py-3 text-gray-600">' + escapeHtml(plan.specification) + '</td>\
@@ -307,7 +312,7 @@ function renderListContent(plans) {
             <td class="px-3 py-3 text-gray-600">' + (plan.customer ? escapeHtml(plan.customer) : '<span class="text-gray-300">-</span>') + '</td>\
             <td class="px-3 py-3 text-center" onclick="event.stopPropagation()">\
               <div class="flex justify-center space-x-1">\
-                <button class="text-green-600 hover:text-green-800 hover:bg-green-50 p-1.5 rounded transition-colors text-xs font-medium" onclick="openProgressModal(\'' + plan.id + '\')" title="管理进度">进度</button>\
+                <button class="text-green-600 hover:text-green-800 hover:bg-green-50 p-1.5 rounded transition-colors text-xs font-medium" onclick="openDetailModal(\'' + plan.id + '\')" title="查看详情">详情</button>\
                 <button class="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded transition-colors text-xs font-medium" onclick="openEditModal(\'' + plan.id + '\')">编辑</button>\
                 <button class="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded transition-colors text-xs font-medium" onclick="openDeleteModal(\'' + plan.id + '\')">删除</button>\
               </div>\
@@ -330,7 +335,7 @@ function renderListContent(plans) {
     var stepLabel = getStepLabel(plan.processStep);
 
     cardsHtml += '\
-      <div class="card-hover mobile-card-clickable bg-white border border-gray-200 rounded-lg p-4" data-id="' + plan.id + '" onclick="openProgressModal(\'' + plan.id + '\')">\
+      <div class="card-hover mobile-card-clickable bg-white border border-gray-200 rounded-lg p-4" data-id="' + plan.id + '" onclick="openDetailModal(\'' + plan.id + '\')">\
         <div class="flex items-start justify-between mb-2">\
           <div class="font-semibold text-gray-800">' + escapeHtml(plan.planNo) + '</div>\
           <span class="status-badge ' + (statusClasses[plan.status] || '') + '">' + (statusLabels[plan.status] || plan.status) + '</span>\
@@ -345,7 +350,7 @@ function renderListContent(plans) {
           ' + (plan.remark ? '<div class="text-gray-400">💬 ' + escapeHtml(plan.remark) + '</div>' : '') + '\
         </div>\
         <div class="flex space-x-2 mt-3 pt-3 border-t border-gray-100" onclick="event.stopPropagation()">\
-          <button class="flex-1 text-center text-green-600 hover:bg-green-50 py-2 rounded text-sm font-medium transition-colors" onclick="openProgressModal(\'' + plan.id + '\')">🔧 进度</button>\
+          <button class="flex-1 text-center text-green-600 hover:bg-green-50 py-2 rounded text-sm font-medium transition-colors" onclick="openDetailModal(\'' + plan.id + '\')">📋 详情</button>\
           <button class="flex-1 text-center text-blue-500 hover:bg-blue-50 py-2 rounded text-sm font-medium transition-colors" onclick="openEditModal(\'' + plan.id + '\')">✏️ 编辑</button>\
           <button class="flex-1 text-center text-red-500 hover:bg-red-50 py-2 rounded text-sm font-medium transition-colors" onclick="openDeleteModal(\'' + plan.id + '\')">🗑️ 删除</button>\
         </div>\
@@ -1272,4 +1277,462 @@ function showSearchResultModal(type, keyword, count, status) {
 function closeSearchResultModal() {
   var modal = document.getElementById('searchResultModal');
   if (modal) modal.classList.remove('show');
+}
+
+// ==========================================
+// 三级详情弹窗（生产进度 + 财务模块）
+// ==========================================
+
+/**
+ * 打开订单三级详情弹窗
+ * @param {string} id - 计划 ID
+ */
+function openDetailModal(id) {
+  var modal = document.getElementById('detailModal');
+  var content = document.getElementById('detailModalContent');
+  if (!modal || !content) return;
+
+  detailPlanId = id;
+  isDetailSaving = false;
+  var plan = getPlanById(id);
+  if (!plan) {
+    showToast('未找到该计划', 'error');
+    return;
+  }
+
+  // --- 构建进度管理区 ---
+  // 工序步骤
+  var stepsHtml = '';
+  var currentStepIndex = plan.processStep
+    ? PROCESS_STEPS.findIndex(function (s) { return s.key === plan.processStep; })
+    : -1;
+  PROCESS_STEPS.forEach(function (step, idx) {
+    var isActive = plan.processStep === step.key;
+    var isCompleted = currentStepIndex !== -1 && idx < currentStepIndex;
+    var stepClass = 'progress-step-item';
+    if (isActive) stepClass += ' active';
+    if (isCompleted && !isActive) stepClass += ' completed-step';
+    stepsHtml += '\
+      <div class="' + stepClass + '" data-step="' + step.key + '" onclick="detailSelectStep(event, \'' + step.key + '\')">\
+        <div class="progress-step-dot"></div>\
+        <div class="progress-step-name">' + step.label + '</div>\
+      </div>\
+    ';
+  });
+
+  // 进度状态按钮
+  var progressKeys = Object.keys(PROGRESS_STATUS);
+  var statusBtnsHtml = '';
+  progressKeys.forEach(function (k) {
+    var ps = PROGRESS_STATUS[k];
+    var isSelected = plan.progressStatus === k;
+    statusBtnsHtml += '\
+      <button \
+        class="' + (isSelected ? 'ring-2 ring-offset-1' : '') + ' px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-all min-h-[44px]" \
+        style="color:' + ps.color + '; border-color:' + (isSelected ? ps.color : '#e5e7eb') + '; background:' + (isSelected ? ps.bg : '#fff') + ';" \
+        data-status="' + k + '" \
+        onclick="detailSelectStatus(event, \'' + k + '\')"\
+      >' + ps.label + '</button>\
+    ';
+  });
+
+  // 操作日志
+  var logs = plan.operationLogs || [];
+  var logsHtml = '';
+  if (logs.length > 0) {
+    var recentLogs = logs.slice().reverse().slice(0, 10);
+    logsHtml = '<div class="log-timeline">';
+    recentLogs.forEach(function (log) {
+      var timeStr = log.timestamp ? log.timestamp.slice(0, 19).replace('T', ' ') : '';
+      logsHtml += '\
+        <div class="log-item">\
+          <div class="log-time">' + timeStr + '</div>\
+          <div class="log-content">' + escapeHtml(log.action) + '</div>\
+        </div>\
+      ';
+    });
+    logsHtml += '</div>';
+  } else {
+    logsHtml = '<p class="text-gray-400 text-xs text-center py-2">暂无操作记录</p>';
+  }
+
+  // --- 构建财务模块 ---
+  var settleLabel = getSettleLabel(plan.settleStatus || 'unsettled');
+  var settleColor = getSettleColor(plan.settleStatus || 'unsettled');
+  var settleBg = getSettleBg(plan.settleStatus || 'unsettled');
+
+  // 财务操作日志
+  var fLogs = plan.financeLogs || [];
+  var fLogsHtml = '';
+  if (fLogs.length > 0) {
+    var recentFLogs = fLogs.slice().reverse().slice(0, 10);
+    fLogsHtml = '<div class="log-timeline">';
+    recentFLogs.forEach(function (log) {
+      var timeStr = log.timestamp ? log.timestamp.slice(0, 19).replace('T', ' ') : '';
+      fLogsHtml += '\
+        <div class="log-item">\
+          <div class="log-time">' + timeStr + '</div>\
+          <div class="log-content">' + escapeHtml(log.action + (log.detail ? ': ' + log.detail : '')) + '</div>\
+        </div>\
+      ';
+    });
+    fLogsHtml += '</div>';
+  } else {
+    fLogsHtml = '<p class="text-gray-400 text-xs text-center py-2">暂无财务操作记录</p>';
+  }
+
+  content.innerHTML = '\
+    <!-- 弹窗头部 -->\
+    <div class="flex items-center justify-between p-5 border-b border-gray-100 flex-shrink-0">\
+      <div class="flex items-center space-x-3">\
+        <h3 class="text-lg font-bold text-gray-800">📋 订单详情</h3>\
+        <span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">' + escapeHtml(plan.planNo) + '</span>\
+      </div>\
+      <button class="text-gray-400 hover:text-gray-600 text-xl leading-none p-1" onclick="closeDetailModal()">&times;</button>\
+    </div>\
+    \
+    <!-- 订单基本信息 -->\
+    <div class="px-5 py-3 bg-gray-50 border-b border-gray-100 flex-shrink-0">\
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">\
+        <span class="font-medium text-gray-700">📦 ' + escapeHtml(plan.steelType) + '</span>\
+        <span class="text-gray-500">规格: ' + escapeHtml(plan.specification) + '</span>\
+        <span class="text-gray-500">数量: ' + plan.quantity + ' ' + escapeHtml(plan.unit) + '</span>\
+        <span class="text-gray-500">📅 ' + formatDate(plan.deliveryDate) + '</span>\
+        ' + (plan.customer ? '<span class="text-gray-500">🏢 ' + escapeHtml(plan.customer) + '</span>' : '') + '\
+        <span class="status-badge ' + (plan.status === 'pending' ? 'status-pending' : plan.status === 'processing' ? 'status-processing' : plan.status === 'completed' ? 'status-completed' : 'status-cancelled') + '">' + (plan.status === 'pending' ? '待生产' : plan.status === 'processing' ? '生产中' : plan.status === 'completed' ? '已完成' : '已取消') + '</span>\
+      </div>\
+    </div>\
+    \
+    <!-- 弹窗主体（可滚动，双栏布局） -->\
+    <div class="detail-modal-body p-5 overflow-y-auto">\
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">\
+        \
+        <!-- ===== 左侧：生产进度管理 ===== -->\
+        <div class="detail-section">\
+          <div class="detail-section-header">\
+            <span class="text-base font-bold text-gray-700">🔧 生产进度</span>\
+          </div>\
+          \
+          <!-- 工序选择 -->\
+          <div class="mb-4">\
+            <h4 class="text-sm font-bold text-gray-600 mb-2">📋 当前工序</h4>\
+            <div class="space-y-1.5" id="detailProgressSteps">\
+              ' + stepsHtml + '\
+            </div>\
+          </div>\
+          \
+          <!-- 进度状态选择 -->\
+          <div class="mb-4">\
+            <h4 class="text-sm font-bold text-gray-600 mb-2">🏷️ 进度状态</h4>\
+            <div class="flex flex-wrap gap-2" id="detailProgressStatusBtns">\
+              ' + statusBtnsHtml + '\
+            </div>\
+          </div>\
+          \
+          <!-- 进度保存按钮 -->\
+          <div class="mb-4">\
+            <button class="btn-primary w-full py-2.5" id="detailSaveProgressBtn" onclick="detailSaveProgress()">\
+              💾 保存生产进度\
+            </button>\
+          </div>\
+          \
+          <!-- 操作日志 -->\
+          <div>\
+            <details>\
+              <summary class="text-sm font-bold text-gray-600 mb-2 cursor-pointer select-none">📜 生产操作记录</summary>\
+              <div class="mt-2 bg-gray-50 rounded-lg p-3 max-h-36 overflow-y-auto">\
+                ' + logsHtml + '\
+              </div>\
+            </details>\
+          </div>\
+        </div>\
+        \
+        <!-- ===== 右侧：财务管理 ===== -->\
+        <div class="detail-section">\
+          <div class="detail-section-header">\
+            <span class="text-base font-bold text-gray-700">💰 财务管理</span>\
+            <span class="settle-badge ' + getSettleClass(plan.settleStatus || 'unsettled') + '">' + settleLabel + '</span>\
+          </div>\
+          \
+          <div class="space-y-3">\
+            <!-- 钢材单价 -->\
+            <div>\
+              <label class="form-label text-xs">钢材单价（元/' + escapeHtml(plan.unit) + '）</label>\
+              <input type="number" id="detailUnitPrice" class="form-input" value="' + (plan.unitPrice || '') + '" min="0" step="0.01" placeholder="输入单价" onchange="detailAutoCalcTotal()" />\
+            </div>\
+            \
+            <!-- 自动计算：单吨总价 -->\
+            <div class="bg-gray-50 rounded-lg p-3">\
+              <div class="flex items-center justify-between">\
+                <span class="text-sm text-gray-500">单吨总价</span>\
+                <span class="text-lg font-bold text-blue-600" id="detailTotalPrice">' + formatMoney(plan.totalPrice || 0) + ' 元</span>\
+              </div>\
+              <div class="text-xs text-gray-400 mt-1">= 单价 × 数量(' + plan.quantity + ')</div>\
+            </div>\
+            \
+            <!-- 已收金额 -->\
+            <div>\
+              <label class="form-label text-xs">已收金额（元）</label>\
+              <input type="number" id="detailReceivedAmount" class="form-input" value="' + (plan.receivedAmount || '') + '" min="0" step="0.01" placeholder="输入已收金额" onchange="detailAutoCalcTotal()" />\
+            </div>\
+            \
+            <!-- 未收欠款 -->\
+            <div class="bg-red-50 rounded-lg p-3" id="detailUnpaidBox">\
+              <div class="flex items-center justify-between">\
+                <span class="text-sm text-gray-500">未收欠款</span>\
+                <span class="text-lg font-bold text-red-600" id="detailUnpaidAmount">' + formatMoney(plan.unpaidAmount || 0) + ' 元</span>\
+              </div>\
+            </div>\
+            \
+            <!-- 对账备注 -->\
+            <div>\
+              <label class="form-label text-xs">对账备注</label>\
+              <textarea id="detailFinanceRemark" class="form-textarea" rows="2" maxlength="200" placeholder="记录对账信息...">' + escapeHtml(plan.financeRemark || '') + '</textarea>\
+            </div>\
+            \
+            <!-- 财务保存按钮 -->\
+            <button class="btn-primary w-full py-2.5" id="detailSaveFinanceBtn" onclick="detailSaveFinance()">\
+              💾 保存财务数据\
+            </button>\
+          </div>\
+          \
+          <!-- 财务操作日志 -->\
+          <div class="mt-4">\
+            <details>\
+              <summary class="text-sm font-bold text-gray-600 mb-2 cursor-pointer select-none">📜 财务操作记录</summary>\
+              <div class="mt-2 bg-gray-50 rounded-lg p-3 max-h-36 overflow-y-auto">\
+                ' + fLogsHtml + '\
+              </div>\
+            </details>\
+          </div>\
+        </div>\
+        \
+      </div>\
+    </div>\
+    \
+    <!-- 弹窗底部按钮 -->\
+    <div class="flex justify-between items-center p-5 border-t border-gray-100 flex-shrink-0">\
+      <div class="flex space-x-2">\
+        <button class="btn-secondary text-sm" onclick="openEditModal(\'' + plan.id + '\')">✏️ 编辑</button>\
+        <button class="btn-secondary text-sm" onclick="openDeleteModal(\'' + plan.id + '\')">🗑️ 删除</button>\
+      </div>\
+      <button class="btn-secondary" onclick="closeDetailModal()">关闭</button>\
+    </div>\
+  ';
+
+  // 初始化选中状态
+  pendingProgressStep = plan.processStep || '';
+  pendingProgressStatus = plan.progressStatus || 'pending';
+
+  // 关闭页面滚动
+  document.body.classList.add('modal-open');
+  modal.classList.add('show');
+  modal.onclick = function (e) {
+    if (e.target === modal) closeDetailModal();
+  };
+}
+
+/**
+ * 关闭三级详情弹窗
+ */
+function closeDetailModal() {
+  var modal = document.getElementById('detailModal');
+  if (modal) modal.classList.remove('show');
+  detailPlanId = null;
+  isDetailSaving = false;
+  document.body.classList.remove('modal-open');
+}
+
+/**
+ * 详情弹窗中工序选择
+ */
+function detailSelectStep(event, stepKey) {
+  event.stopPropagation();
+  pendingProgressStep = stepKey;
+  var steps = document.querySelectorAll('#detailProgressSteps .progress-step-item');
+  steps.forEach(function (el) {
+    var s = el.getAttribute('data-step');
+    el.classList.remove('active', 'completed-step');
+    var stepIdx = PROCESS_STEPS.findIndex(function (st) { return st.key === s; });
+    var selectedIdx = PROCESS_STEPS.findIndex(function (st) { return st.key === stepKey; });
+    if (s === stepKey) {
+      el.classList.add('active');
+    } else if (stepIdx < selectedIdx) {
+      el.classList.add('completed-step');
+    }
+  });
+}
+
+/**
+ * 详情弹窗中进度状态选择
+ */
+function detailSelectStatus(event, statusKey) {
+  event.stopPropagation();
+  pendingProgressStatus = statusKey;
+  var btns = document.querySelectorAll('#detailProgressStatusBtns button');
+  btns.forEach(function (btn) {
+    var ps = PROGRESS_STATUS[btn.getAttribute('data-status')];
+    if (btn.getAttribute('data-status') === statusKey) {
+      btn.className = 'ring-2 ring-offset-1 px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-all min-h-[44px]';
+      btn.style.cssText = 'color:' + ps.color + '; border-color:' + ps.color + '; background:' + ps.bg + ';';
+    } else {
+      btn.className = 'px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-all min-h-[44px]';
+      btn.style.cssText = 'color:' + ps.color + '; border-color:#e5e7eb; background:#fff;';
+    }
+  });
+}
+
+/**
+ * 详情弹窗中保存生产进度
+ */
+function detailSaveProgress() {
+  if (!detailPlanId || isDetailSaving) return;
+  isDetailSaving = true;
+
+  try {
+    var plan = getPlanById(detailPlanId);
+    if (!plan) {
+      showToast('计划不存在', 'error');
+      isDetailSaving = false;
+      return;
+    }
+
+    if (pendingProgressStep === (plan.processStep || '') && pendingProgressStatus === (plan.progressStatus || 'pending')) {
+      showToast('进度未发生变化，无需保存', 'info');
+      isDetailSaving = false;
+      return;
+    }
+
+    var oldStep = plan.processStep || '';
+    var oldStatus = plan.progressStatus || 'pending';
+
+    var updated = updatePlan(detailPlanId, {
+      processStep: pendingProgressStep,
+      progressStatus: pendingProgressStatus
+    });
+
+    if (!updated) {
+      showToast('更新失败', 'error');
+      isDetailSaving = false;
+      return;
+    }
+
+    var logAction = '';
+    if (oldStep !== pendingProgressStep) {
+      logAction += '工序: ' + getStepLabel(oldStep) + ' → ' + getStepLabel(pendingProgressStep) + '; ';
+    }
+    if (oldStatus !== pendingProgressStatus) {
+      logAction += '进度: ' + getProgressLabel(oldStatus) + ' → ' + getProgressLabel(pendingProgressStatus);
+    }
+    addOperationLog(detailPlanId, {
+      action: logAction || '更新进度',
+      from: oldStep + '|' + oldStatus,
+      to: pendingProgressStep + '|' + pendingProgressStatus,
+      field: 'progress'
+    });
+
+    showToast('生产进度保存成功！', 'success');
+    refreshList();
+    openDetailModal(detailPlanId);
+  } catch (err) {
+    showToast('保存失败: ' + err.message, 'error');
+  }
+
+  isDetailSaving = false;
+}
+
+/**
+ * 详情弹窗中自动计算总价和未收欠款
+ */
+function detailAutoCalcTotal() {
+  var unitPriceEl = document.getElementById('detailUnitPrice');
+  var receivedEl = document.getElementById('detailReceivedAmount');
+  var totalEl = document.getElementById('detailTotalPrice');
+  var unpaidEl = document.getElementById('detailUnpaidAmount');
+  var unpaidBox = document.getElementById('detailUnpaidBox');
+
+  if (!detailPlanId) return;
+  var plan = getPlanById(detailPlanId);
+  if (!plan) return;
+
+  var unitPrice = unitPriceEl ? parseFloat(unitPriceEl.value) || 0 : 0;
+  var received = receivedEl ? parseFloat(receivedEl.value) || 0 : 0;
+  var quantity = Number(plan.quantity) || 0;
+  var totalPrice = unitPrice * quantity;
+  var unpaid = totalPrice - received;
+  if (unpaid < 0) unpaid = 0;
+
+  if (totalEl) totalEl.textContent = formatMoney(totalPrice) + ' 元';
+  if (unpaidEl) unpaidEl.textContent = formatMoney(unpaid) + ' 元';
+
+  // 欠款区域颜色变化
+  if (unpaidBox) {
+    if (unpaid <= 0 && totalPrice > 0) {
+      unpaidBox.className = 'bg-green-50 rounded-lg p-3';
+    } else if (unpaid > 0) {
+      unpaidBox.className = 'bg-red-50 rounded-lg p-3';
+    } else {
+      unpaidBox.className = 'bg-gray-50 rounded-lg p-3';
+    }
+  }
+}
+
+/**
+ * 详情弹窗中保存财务数据
+ */
+function detailSaveFinance() {
+  if (!detailPlanId || isDetailSaving) return;
+  isDetailSaving = true;
+
+  try {
+    var unitPriceEl = document.getElementById('detailUnitPrice');
+    var receivedEl = document.getElementById('detailReceivedAmount');
+    var remarkEl = document.getElementById('detailFinanceRemark');
+
+    var unitPrice = unitPriceEl ? parseFloat(unitPriceEl.value) || 0 : 0;
+    var received = receivedEl ? parseFloat(receivedEl.value) || 0 : 0;
+    var remark = remarkEl ? remarkEl.value.trim() : '';
+
+    var result = updatePlanFinance(detailPlanId, {
+      unitPrice: unitPrice,
+      receivedAmount: received,
+      financeRemark: remark
+    });
+
+    if (!result) {
+      showToast('保存失败', 'error');
+      isDetailSaving = false;
+      return;
+    }
+
+    showToast('财务数据保存成功！', 'success');
+    refreshList();
+    openDetailModal(detailPlanId);
+  } catch (err) {
+    showToast('保存失败: ' + err.message, 'error');
+  }
+
+  isDetailSaving = false;
+}
+
+/**
+ * 格式化金额显示
+ * @param {number} amount
+ * @returns {string}
+ */
+function formatMoney(amount) {
+  var num = Number(amount) || 0;
+  return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/**
+ * 导出财务账单（包装 showToast）
+ */
+function handleExportFinanceExcel() {
+  var result = exportFinanceExcel();
+  if (result && result.success) {
+    showToast(result.message, 'success');
+  } else if (result && result.message) {
+    showToast(result.message, 'warning');
+  }
 }
