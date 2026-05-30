@@ -451,10 +451,11 @@
         }
       });
 
-      // 关闭横幅
+      // 关闭横幅（点X即永久不再提示）
       pwaCloseBtn.addEventListener('click', function() {
         pwaBanner.classList.remove('show');
         localStorage.setItem('pwa_banner_closed', '1');
+        markAsInstalled();
       });
 
       // 关闭教程弹窗（视为用户已看到教程，不再重复弹）
