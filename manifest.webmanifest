@@ -1,7 +1,7 @@
 {
   "name": "Steel 钢材加工管理系统",
   "short_name": "Steel管理",
-  "description": "钢材加工生产财务管理系统 — 工业级PWA",
+  "description": "钢材加工生产财务管理系统",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
@@ -13,58 +13,52 @@
   "categories": ["productivity", "business", "utilities"],
   "icons": [
     {
-      "src": "icons/icon-72x72.svg",
+      "src": "icons/icon-72x72.png",
       "sizes": "72x72",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-96x96.svg",
+      "src": "icons/icon-96x96.png",
       "sizes": "96x96",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-128x128.svg",
+      "src": "icons/icon-128x128.png",
       "sizes": "128x128",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-144x144.svg",
+      "src": "icons/icon-144x144.png",
       "sizes": "144x144",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-152x152.svg",
+      "src": "icons/icon-152x152.png",
       "sizes": "152x152",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-192x192.svg",
+      "src": "icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-384x384.svg",
+      "src": "icons/icon-384x384.png",
       "sizes": "384x384",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-512x512.svg",
+      "src": "icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-maskable-512x512.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
     }
   ],
   "prefer_related_applications": false,
@@ -75,14 +69,14 @@
       "short_name": "新建",
       "description": "录入新的钢材加工生产计划",
       "url": "?page=form",
-      "icons": [{ "src": "icons/icon-96x96.svg", "sizes": "96x96" }]
+      "icons": [{ "src": "icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
       "name": "生产计划列表",
       "short_name": "列表",
       "description": "查看和管理所有生产计划",
       "url": "?page=list",
-      "icons": [{ "src": "icons/icon-96x96.svg", "sizes": "96x96" }]
+      "icons": [{ "src": "icons/icon-96x96.png", "sizes": "96x96" }]
     }
   ]
 }

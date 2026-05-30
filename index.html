@@ -88,13 +88,32 @@
     .pwa-banner .pwa-close{flex-shrink:0;background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;padding:4px 8px;cursor:pointer;line-height:1}
     @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
     @media(min-width:768px){.pwa-banner{left:50%;right:auto;bottom:20px;transform:translateX(-50%);border-radius:16px;max-width:480px;width:calc(100% - 40px)}}
+    /* PWA 教程引导弹窗 */
+    .pwa-guide-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px}
+    .pwa-guide-overlay.show{display:flex}
+    .pwa-guide-card{background:#fff;border-radius:20px;padding:28px 24px 20px;max-width:360px;width:100%;position:relative;text-align:center;animation:slideUp .3s ease-out}
+    .pwa-guide-close{position:absolute;top:12px;right:16px;font-size:22px;color:#999;cursor:pointer;padding:4px 8px;line-height:1}
+    .pwa-guide-icon{font-size:48px;margin-bottom:8px}
+    .pwa-guide-title{font-size:20px;font-weight:700;color:#1a2332;margin-bottom:16px}
+    .pwa-guide-steps{text-align:left;margin-bottom:16px}
+    .pwa-step{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:14px;color:#333;line-height:1.5}
+    .pwa-step:last-child{border-bottom:none}
+    .pwa-step-num{flex-shrink:0;width:24px;height:24px;background:#1a2332;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+    .pwa-guide-tip{font-size:12px;color:#999;padding-top:8px}
   </style>
 
   <!-- 自定义样式 -->
   <link rel="stylesheet" href="css/style.css">
 
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="Steel管理">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192x192.png">
+
   <!-- 页面图标 -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏭</text></svg>">
+  <link rel="icon" href="icons/icon-192x192.png">
 </head>
 <body class="app-body">
 
@@ -292,86 +311,152 @@
   <script src="js/customer-service.js"></script>
   <script src="js/app.js"></script>
 
-  <!-- ========== PWA 安装引导横幅 ========== -->
+  <!-- ========== PWA 安装引导（夸克/Chrome/Edge/UC/Safari 全兼容） ========== -->
   <div class="pwa-banner" id="pwaBanner">
     <div class="pwa-icon">🏭</div>
     <div class="pwa-info">
       <div class="pwa-title">Steel 钢材管理系统</div>
-      <div class="pwa-desc">添加到桌面，像APP一样使用</div>
+      <div class="pwa-desc" id="pwaBannerDesc">添加到桌面，像APP一样使用</div>
     </div>
     <button class="pwa-btn" id="pwaInstallBtn">立即安装</button>
     <button class="pwa-close" id="pwaCloseBtn">✕</button>
   </div>
 
+  <!-- 夸克/不支持 beforeinstallprompt 时的引导弹窗 -->
+  <div class="pwa-guide-overlay" id="pwaGuideOverlay">
+    <div class="pwa-guide-card">
+      <div class="pwa-guide-close" id="pwaGuideClose">✕</div>
+      <div class="pwa-guide-icon">📲</div>
+      <div class="pwa-guide-title" id="pwaGuideTitle">添加到桌面</div>
+      <div class="pwa-guide-steps" id="pwaGuideSteps"></div>
+      <div class="pwa-guide-tip">💡 添加后桌面会多一个APP图标，点击即用</div>
+    </div>
+  </div>
+
   <script>
-    var deferredPrompt;
-    var pwaBanner = document.getElementById('pwaBanner');
-    var pwaInstallBtn = document.getElementById('pwaInstallBtn');
-    var pwaCloseBtn = document.getElementById('pwaCloseBtn');
+    (function() {
+      var deferredPrompt;
+      var pwaBanner = document.getElementById('pwaBanner');
+      var pwaInstallBtn = document.getElementById('pwaInstallBtn');
+      var pwaCloseBtn = document.getElementById('pwaCloseBtn');
+      var pwaBannerDesc = document.getElementById('pwaBannerDesc');
+      var guideOverlay = document.getElementById('pwaGuideOverlay');
+      var guideClose = document.getElementById('pwaGuideClose');
+      var guideTitle = document.getElementById('pwaGuideTitle');
+      var guideSteps = document.getElementById('pwaGuideSteps');
 
-    // 检查是否已经安装
-    function isStandalone() {
-      return window.matchMedia('(display-mode: standalone)').matches
-          || navigator.standalone
-          || document.referrer.includes('android-app://');
-    }
-
-    // 显示安装横幅
-    function showPwaBanner() {
-      if (isStandalone()) return;
-      if (localStorage.getItem('pwa_banner_closed')) return;
-      setTimeout(function() { pwaBanner.classList.add('show'); }, 1500);
-    }
-
-    // 监听 beforeinstallprompt
-    window.addEventListener('beforeinstallprompt', function(e) {
-      e.preventDefault();
-      deferredPrompt = e;
-      showPwaBanner();
-    });
-
-    // 如果 3 秒后还没触发 beforeinstallprompt，也显示横幅（让用户手动操作）
-    setTimeout(function() {
-      if (!deferredPrompt && !pwaBanner.classList.contains('show')) {
-        showPwaBanner();
-        // 改为引导文字
-        pwaInstallBtn.textContent = '查看教程';
-        pwaInstallBtn.onclick = function() {
-          var ua = navigator.userAgent;
-          if (/iPhone|iPad|iPod/.test(ua)) {
-            alert('iOS Safari：\n点击底部「分享」按钮 → 「添加到主屏幕」');
-          } else if (/Android/.test(ua)) {
-            alert('Chrome/浏览器：\n点击右上角「⋮」菜单 → 「添加到主屏幕」');
-          } else {
-            alert('点击浏览器菜单 → 「安装此网站」或「添加到主屏幕」');
-          }
-        };
+      // 检测浏览器类型
+      function getBrowser() {
+        var ua = navigator.userAgent;
+        if (/Quark/i.test(ua)) return 'quark';
+        if (/UCBrowser/i.test(ua)) return 'uc';
+        if (/iPhone|iPad|iPod/.test(ua)) return 'ios';
+        if (/Android/.test(ua)) return 'android';
+        return 'other';
       }
-    }, 3000);
 
-    // 安装按钮
-    pwaInstallBtn.addEventListener('click', function() {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(function(result) {
-          console.log('[PWA] User choice:', result.outcome);
-          deferredPrompt = null;
+      // 是否已安装
+      function isStandalone() {
+        return window.matchMedia('(display-mode: standalone)').matches
+            || navigator.standalone
+            || document.referrer.includes('android-app://');
+      }
+
+      // 显示底部横幅
+      function showBanner() {
+        if (isStandalone()) return;
+        if (localStorage.getItem('pwa_banner_closed')) return;
+        var browser = getBrowser();
+        if (browser === 'quark') {
+          pwaBannerDesc.textContent = '点击按钮查看安装教程';
+        }
+        setTimeout(function() { pwaBanner.classList.add('show'); }, 1500);
+      }
+
+      // 显示教程弹窗
+      function showGuide() {
+        var browser = getBrowser();
+        var steps = '';
+
+        if (browser === 'quark') {
+          guideTitle.textContent = '夸克浏览器安装教程';
+          steps = '<div class="pwa-step"><span class="pwa-step-num">1</span>点击夸克底部中间「<b>☰</b>」菜单按钮</div>' +
+                  '<div class="pwa-step"><span class="pwa-step-num">2</span>在弹出的菜单中找到「<b>添加到桌面</b>」</div>' +
+                  '<div class="pwa-step"><span class="pwa-step-num">3</span>点击「<b>添加</b>」确认</div>' +
+                  '<div class="pwa-step"><span class="pwa-step-num">✅</span>桌面出现 Steel 图标，点击打开</div>';
+        } else if (browser === 'uc') {
+          guideTitle.textContent = 'UC浏览器安装教程';
+          steps = '<div class="pwa-step"><span class="pwa-step-num">1</span>点击UC底部「<b>三</b>」菜单</div>' +
+                  '<div class="pwa-step"><span class="pwa-step-num">2</span>找到「<b>添加到桌面</b>」图标</div>' +
+                  '<div class="pwa-step"><span class="pwa-step-num">3</span>点击确认添加</div>';
+        } else if (browser === 'ios') {
+          guideTitle.textContent = 'iPhone/iPad 安装教程';
+          steps = '<div class="pwa-step"><span class="pwa-step-num">1</span>点击 Safari 底部「<b>分享</b>」按钮（方框箭头）</div>' +
+                  '<div class="pwa-step"><span class="pwa-step-num">2</span>往下滑动，找到「<b>添加到主屏幕</b>」</div>' +
+                  '<div class="pwa-step"><span class="pwa-step-num">3</span>点击右上角「<b>添加</b>」</div>';
+        } else {
+          guideTitle.textContent = '添加到桌面教程';
+          steps = '<div class="pwa-step"><span class="pwa-step-num">1</span>点击浏览器右上角「<b>⋮</b>」菜单</div>' +
+                  '<div class="pwa-step"><span class="pwa-step-num">2</span>选择「<b>添加到主屏幕</b>」或「<b>安装应用</b>」</div>' +
+                  '<div class="pwa-step"><span class="pwa-step-num">3</span>确认安装</div>';
+        }
+        guideSteps.innerHTML = steps;
+        guideOverlay.classList.add('show');
+      }
+
+      // 隐藏教程弹窗
+      function hideGuide() {
+        guideOverlay.classList.remove('show');
+      }
+
+      // 标准 PWA 安装事件
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        showBanner();
+      });
+
+      // 3秒后还没触发 beforeinstallprompt（夸克等不支持），显示横幅
+      setTimeout(function() {
+        if (!deferredPrompt && !pwaBanner.classList.contains('show')) {
+          showBanner();
+        }
+      }, 3000);
+
+      // 安装按钮点击
+      pwaInstallBtn.addEventListener('click', function() {
+        if (deferredPrompt) {
+          // 标准 PWA 安装
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function(result) {
+            deferredPrompt = null;
+            pwaBanner.classList.remove('show');
+          });
+        } else {
+          // 夸克等不支持标准 API，显示教程弹窗
+          showGuide();
           pwaBanner.classList.remove('show');
-        });
-      }
-    });
+        }
+      });
 
-    // 关闭按钮
-    pwaCloseBtn.addEventListener('click', function() {
-      pwaBanner.classList.remove('show');
-      localStorage.setItem('pwa_banner_closed', '1');
-    });
+      // 关闭横幅
+      pwaCloseBtn.addEventListener('click', function() {
+        pwaBanner.classList.remove('show');
+        localStorage.setItem('pwa_banner_closed', '1');
+      });
 
-    // 已安装就隐藏
-    window.addEventListener('appinstalled', function() {
-      pwaBanner.classList.remove('show');
-      console.log('[PWA] App installed!');
-    });
+      // 关闭教程弹窗
+      guideClose.addEventListener('click', hideGuide);
+      guideOverlay.addEventListener('click', function(e) {
+        if (e.target === guideOverlay) hideGuide();
+      });
+
+      // 已安装
+      window.addEventListener('appinstalled', function() {
+        pwaBanner.classList.remove('show');
+        hideGuide();
+      });
+    })();
   </script>
 </body>
 </html>
