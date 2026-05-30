@@ -1,0 +1,391 @@
+/* ==========================================
+   Steel 钢材管理系统 - 数据存储层
+   封装所有 localStorage 读写操作
+   v2.0 - 新增工序、进度状态、操作日志
+   ========================================== */
+
+var STORAGE_KEY = 'steel_production_plans';
+
+/**
+ * 工序步骤定义
+ */
+var PROCESS_STEPS = [
+  { key: 'material_prep',    label: '原料准备' },
+  { key: 'cutting',          label: '切割下料' },
+  { key: 'forming',          label: '成型加工' },
+  { key: 'welding',          label: '焊接组装' },
+  { key: 'surface_treatment',label: '表面处理' },
+  { key: 'quality_check',    label: '质量检验' },
+  { key: 'packaging',        label: '包装入库' }
+];
+
+/**
+ * 进度状态定义
+ */
+var PROGRESS_STATUS = {
+  pending:     { label: '待加工',   color: '#f97316', bg: '#fff7ed', cssClass: 'progress-pending' },
+  processing:  { label: '加工中',   color: '#2563eb', bg: '#eff6ff', cssClass: 'progress-processing' },
+  completed:   { label: '已完成',   color: '#16a34a', bg: '#f0fdf4', cssClass: 'progress-completed' },
+  delayed:     { label: '延期',     color: '#dc2626', bg: '#fef2f2', cssClass: 'progress-delayed' }
+};
+
+/**
+ * 为旧数据补充新字段，确保兼容性
+ * @param {Object} plan - 计划对象
+ * @returns {Object} 补全后的计划对象
+ */
+function normalizePlan(plan) {
+  return {
+    id: plan.id,
+    planNo: plan.planNo || '',
+    steelType: plan.steelType || '',
+    specification: plan.specification || '',
+    quantity: Number(plan.quantity) || 0,
+    unit: plan.unit || '吨',
+    deliveryDate: plan.deliveryDate || '',
+    status: plan.status || 'pending',
+    processStep: plan.processStep || '',
+    progressStatus: plan.progressStatus || 'pending',
+    customer: plan.customer || '',
+    remark: plan.remark || '',
+    operationLogs: plan.operationLogs || [],
+    createdAt: plan.createdAt || new Date().toISOString(),
+    updatedAt: plan.updatedAt || plan.createdAt || new Date().toISOString()
+  };
+}
+
+/**
+ * 获取所有生产计划（自动兼容旧数据）
+ * @returns {Array} 生产计划数组
+ */
+function getPlans() {
+  try {
+    var data = localStorage.getItem(STORAGE_KEY);
+    if (!data) return [];
+    var plans = JSON.parse(data);
+    return plans.map(function (plan) { return normalizePlan(plan); });
+  } catch (e) {
+    console.error('读取生产计划失败:', e);
+    return [];
+  }
+}
+
+/**
+ * 保存所有生产计划到 localStorage
+ * @param {Array} plans - 生产计划数组
+ */
+function savePlans(plans) {
+  try {
+    var jsonStr = JSON.stringify(plans);
+    localStorage.setItem(STORAGE_KEY, jsonStr);
+  } catch (e) {
+    console.error('保存生产计划失败:', e);
+    if (e.name === 'QuotaExceededError') {
+      throw new Error('存储空间已满，请导出数据后清理旧数据。');
+    }
+    throw new Error('数据保存失败: ' + e.message);
+  }
+}
+
+/**
+ * 根据 ID 获取单个生产计划
+ * @param {string} id - 计划 ID
+ * @returns {Object|null} 生产计划对象，未找到返回 null
+ */
+function getPlanById(id) {
+  var plans = getPlans();
+  var plan = plans.find(function (p) { return p.id === id; });
+  return plan ? normalizePlan(plan) : null;
+}
+
+/**
+ * 添加一条生产计划
+ * @param {Object} planData - 计划数据（不含 id 和 createdAt）
+ * @returns {Object} 新创建的计划对象
+ */
+function addPlan(planData) {
+  var plans = getPlans();
+  var now = new Date().toISOString();
+  var newPlan = {
+    id: generateId(),
+    planNo: planData.planNo || '',
+    steelType: planData.steelType || '',
+    specification: planData.specification || '',
+    quantity: Number(planData.quantity) || 0,
+    unit: planData.unit || '吨',
+    deliveryDate: planData.deliveryDate || '',
+    status: planData.status || 'pending',
+    processStep: planData.processStep || '',
+    progressStatus: planData.progressStatus || 'pending',
+    customer: planData.customer || '',
+    remark: planData.remark || '',
+    operationLogs: [],
+    createdAt: now,
+    updatedAt: now
+  };
+  plans.push(newPlan);
+  savePlans(plans);
+  return newPlan;
+}
+
+/**
+ * 更新一条生产计划
+ * @param {string} id - 计划 ID
+ * @param {Object} planData - 要更新的字段
+ * @returns {Object|null} 更新后的计划对象，未找到返回 null
+ */
+function updatePlan(id, planData) {
+  var plans = getPlans();
+  var index = plans.findIndex(function (plan) { return plan.id === id; });
+  if (index === -1) return null;
+
+  var existing = plans[index];
+  var now = new Date().toISOString();
+  plans[index] = {
+    id: existing.id,
+    planNo: planData.planNo !== undefined ? planData.planNo : existing.planNo,
+    steelType: planData.steelType !== undefined ? planData.steelType : existing.steelType,
+    specification: planData.specification !== undefined ? planData.specification : existing.specification,
+    quantity: planData.quantity !== undefined ? Number(planData.quantity) : existing.quantity,
+    unit: planData.unit !== undefined ? planData.unit : existing.unit,
+    deliveryDate: planData.deliveryDate !== undefined ? planData.deliveryDate : existing.deliveryDate,
+    status: planData.status !== undefined ? planData.status : existing.status,
+    processStep: planData.processStep !== undefined ? planData.processStep : (existing.processStep || ''),
+    progressStatus: planData.progressStatus !== undefined ? planData.progressStatus : (existing.progressStatus || 'pending'),
+    customer: planData.customer !== undefined ? planData.customer : existing.customer,
+    remark: planData.remark !== undefined ? planData.remark : existing.remark,
+    operationLogs: planData.operationLogs !== undefined ? planData.operationLogs : (existing.operationLogs || []),
+    createdAt: existing.createdAt,
+    updatedAt: now
+  };
+  savePlans(plans);
+  return plans[index];
+}
+
+/**
+ * 追加一条操作日志
+ * @param {string} id - 计划 ID
+ * @param {Object} logEntry - { action, from, to, field }
+ */
+function addOperationLog(id, logEntry) {
+  var plans = getPlans();
+  var index = plans.findIndex(function (plan) { return plan.id === id; });
+  if (index === -1) return null;
+
+  var existing = normalizePlan(plans[index]);
+  if (!existing.operationLogs) existing.operationLogs = [];
+  existing.operationLogs.push({
+    timestamp: new Date().toISOString(),
+    action: logEntry.action || 'update',
+    from: logEntry.from || '',
+    to: logEntry.to || '',
+    field: logEntry.field || ''
+  });
+  existing.updatedAt = new Date().toISOString();
+  plans[index] = existing;
+  savePlans(plans);
+  return existing;
+}
+
+/**
+ * 删除一条生产计划
+ * @param {string} id - 计划 ID
+ * @returns {boolean} 是否删除成功
+ */
+function deletePlan(id) {
+  var plans = getPlans();
+  var index = plans.findIndex(function (plan) { return plan.id === id; });
+  if (index === -1) return false;
+  plans.splice(index, 1);
+  savePlans(plans);
+  return true;
+}
+
+/**
+ * 删除所有生产计划
+ * @returns {number} 删除的数量
+ */
+function clearAllPlans() {
+  var count = getPlans().length;
+  savePlans([]);
+  return count;
+}
+
+/**
+ * 获取计划总数
+ * @returns {number}
+ */
+function getPlanCount() {
+  return getPlans().length;
+}
+
+/**
+ * 生成唯一 ID（时间戳 + 随机数）
+ * @returns {string}
+ */
+function generateId() {
+  return 'plan_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+}
+
+/**
+ * 导出所有数据为 JSON 文件
+ */
+function exportData() {
+  try {
+    var plans = getPlans();
+    var jsonStr = JSON.stringify(plans, null, 2);
+    var blob = new Blob([jsonStr], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'steel_plans_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return { success: true, count: plans.length };
+  } catch (err) {
+    return { success: false, count: 0, message: '导出失败: ' + err.message };
+  }
+}
+
+/**
+ * 导出数据为 Excel (CSV) 格式
+ * 包含：计划编号、钢材类型、规格、数量、单位、当前工序、生产进度状态、交货日期、状态、客户、备注
+ */
+function exportExcel() {
+  var plans = getPlans();
+  if (plans.length === 0) {
+    return { success: false, count: 0, message: '暂无数据可导出' };
+  }
+
+  // BOM for Excel 正确识别 UTF-8 中文
+  var BOM = '\uFEFF';
+  var headers = ['计划编号', '钢材类型', '规格', '数量', '单位', '当前工序', '生产进度状态', '交货日期', '生产状态', '客户', '备注', '创建时间'];
+
+  var processStepMap = {};
+  PROCESS_STEPS.forEach(function (s) { processStepMap[s.key] = s.label; });
+
+  var rows = [headers.join(',')];
+
+  plans.forEach(function (plan) {
+    var row = [
+      csvEscape(plan.planNo),
+      csvEscape(plan.steelType),
+      csvEscape(plan.specification),
+      plan.quantity,
+      csvEscape(plan.unit),
+      csvEscape(processStepMap[plan.processStep] || (plan.processStep || '-')),
+      csvEscape((PROGRESS_STATUS[plan.progressStatus] || PROGRESS_STATUS.pending).label),
+      csvEscape(plan.deliveryDate),
+      csvEscape(getStatusLabel(plan.status)),
+      csvEscape(plan.customer || '-'),
+      csvEscape(plan.remark || '-'),
+      csvEscape(plan.createdAt ? plan.createdAt.slice(0, 10) : '-')
+    ];
+    rows.push(row.join(','));
+  });
+
+  try {
+    var csvStr = BOM + rows.join('\n');
+    var blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'steel_plans_export_' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return { success: true, count: plans.length, message: 'Excel 导出成功！共 ' + plans.length + ' 条记录' };
+  } catch (err) {
+    return { success: false, count: 0, message: '导出失败: ' + err.message };
+  }
+}
+
+function csvEscape(str) {
+  if (!str) return '';
+  str = String(str);
+  if (str.indexOf(',') !== -1 || str.indexOf('"') !== -1 || str.indexOf('\n') !== -1) {
+    return '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
+}
+
+function getStatusLabel(status) {
+  var map = { pending: '待生产', processing: '生产中', completed: '已完成', cancelled: '已取消' };
+  return map[status] || status;
+}
+
+/**
+ * 从 JSON 文件导入数据（合并模式）
+ * @param {File} file - JSON 文件
+ * @returns {Promise<number>} 导入的记录数
+ */
+function importData(file) {
+  return new Promise(function (resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var imported = JSON.parse(e.target.result);
+        if (!Array.isArray(imported)) {
+          reject(new Error('文件格式不正确，需要 JSON 数组。'));
+          return;
+        }
+        var plans = getPlans();
+        var addedCount = 0;
+        imported.forEach(function (item) {
+          var exists = plans.some(function (p) { return p.id === item.id; });
+          if (!exists) {
+            plans.push(normalizePlan(item));
+            addedCount++;
+          }
+        });
+        savePlans(plans);
+        resolve(addedCount);
+      } catch (err) {
+        reject(new Error('文件解析失败: ' + err.message));
+      }
+    };
+    reader.onerror = function () {
+      reject(new Error('文件读取失败。'));
+    };
+    reader.readAsText(file);
+  });
+}
+
+/**
+ * 计算进度统计数据
+ * @returns {Object} { total, completedCount, completionRate, stepStats, progressStats }
+ */
+function getProgressStats() {
+  var plans = getPlans();
+  var total = plans.length;
+  var completedCount = plans.filter(function (p) { return p.progressStatus === 'completed'; }).length;
+  var completionRate = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+  // 各工序数量统计
+  var stepStats = {};
+  PROCESS_STEPS.forEach(function (step) {
+    stepStats[step.key] = {
+      label: step.label,
+      total: plans.filter(function (p) { return p.processStep === step.key; }).length
+    };
+  });
+
+  // 各进度状态数量
+  var progressStats = {
+    pending:    plans.filter(function (p) { return p.progressStatus === 'pending'; }).length,
+    processing: plans.filter(function (p) { return p.progressStatus === 'processing'; }).length,
+    completed:  plans.filter(function (p) { return p.progressStatus === 'completed'; }).length,
+    delayed:    plans.filter(function (p) { return p.progressStatus === 'delayed'; }).length
+  };
+
+  return {
+    total: total,
+    completedCount: completedCount,
+    completionRate: completionRate,
+    stepStats: stepStats,
+    progressStats: progressStats
+  };
+}

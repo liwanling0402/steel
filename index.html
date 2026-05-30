@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Steel - 钢材加工生产管理系统</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- 自定义样式 -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- 页面图标 -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏭</text></svg>">
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- ========== 顶部导航栏 ========== -->
+  <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo 区域 -->
+        <div class="flex items-center space-x-3">
+          <span class="text-2xl">🏭</span>
+          <h1 class="text-xl font-bold text-gray-800">Steel 钢材管理系统</h1>
+        </div>
+
+        <!-- 桌面端导航 -->
+        <nav class="hidden sm:flex space-x-1" id="desktopNav">
+          <button
+            class="nav-btn active px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            data-page="form"
+            onclick="switchPage('form')"
+          >
+            📝 生产计划录入
+          </button>
+          <button
+            class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            data-page="list"
+            onclick="switchPage('list')"
+          >
+            📋 生产计划列表
+          </button>
+        </nav>
+
+        <!-- 移动端菜单按钮 -->
+        <button
+          id="mobileMenuBtn"
+          class="sm:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+          onclick="toggleMobileMenu()"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 移动端下拉导航 -->
+      <div id="mobileNav" class="sm:hidden hidden pb-3">
+        <button
+          class="nav-btn active w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors block"
+          data-page="form"
+          onclick="switchPage('form')"
+        >
+          📝 生产计划录入
+        </button>
+        <button
+          class="nav-btn w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors block mt-1"
+          data-page="list"
+          onclick="switchPage('list')"
+        >
+          📋 生产计划列表
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== 主内容区域 ========== -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- 生产计划录入页面 -->
+    <div id="page-form" class="page-content">
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">生产计划录入</h2>
+        <p class="text-gray-500 mt-1 text-sm">填写钢材加工生产计划信息，所有数据将保存在本地浏览器中。</p>
+      </div>
+      <div id="formContainer">
+        <!-- 由 production-form.js 动态渲染 -->
+      </div>
+    </div>
+
+    <!-- 生产计划列表页面 -->
+    <div id="page-list" class="page-content hidden">
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">生产计划列表</h2>
+        <p class="text-gray-500 mt-1 text-sm">查看、筛选、编辑和删除已录入的生产计划。</p>
+      </div>
+      <div id="listContainer">
+        <!-- 由 production-list.js 动态渲染 -->
+      </div>
+    </div>
+  </main>
+
+  <!-- ========== Toast 消息提示 ========== -->
+  <div id="toast" class="fixed top-20 right-4 z-[100] hidden transition-all duration-300">
+    <div class="flex items-center space-x-2 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium" id="toastContent">
+    </div>
+  </div>
+
+  <!-- ========== 编辑弹窗（由 production-list.js 使用） ========== -->
+  <div id="editModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/40">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" id="editModalContent">
+      <!-- 由 production-list.js 动态渲染 -->
+    </div>
+  </div>
+
+  <!-- ========== 删除确认弹窗（由 production-list.js 使用） ========== -->
+  <div id="deleteModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/40">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6 text-center">
+      <div class="text-4xl mb-3">⚠️</div>
+      <h3 class="text-lg font-bold text-gray-800 mb-2">确认删除</h3>
+      <p class="text-gray-500 text-sm mb-6" id="deleteMessage">确定要删除该生产计划吗？此操作不可恢复。</p>
+      <div class="flex space-x-3 justify-center">
+        <button class="px-5 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 transition-colors" onclick="closeDeleteModal()">
+          取消
+        </button>
+        <button class="px-5 py-2 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors" id="confirmDeleteBtn">
+          确认删除
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 进度管理弹窗 ========== -->
+  <div id="progressModal" class="fixed inset-0 z-[65] hidden items-center justify-center bg-black/40">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col" id="progressModalContent">
+      <!-- 由 production-list.js 动态渲染 -->
+    </div>
+  </div>
+
+  <!-- ========== 进度变更二次确认弹窗 ========== -->
+  <div id="confirmProgressModal" class="fixed inset-0 z-[75] hidden items-center justify-center bg-black/50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+      <div class="text-3xl mb-3 text-center">⚠️</div>
+      <h3 class="text-lg font-bold text-gray-800 mb-2 text-center">确认修改进度</h3>
+      <p class="text-gray-500 text-sm mb-2 text-center" id="confirmProgressMsg">确认修改该订单的工序进度吗？</p>
+      <div class="bg-gray-50 rounded-lg p-3 mb-5 text-sm" id="confirmProgressDetail"></div>
+      <div class="flex space-x-3 justify-center">
+        <button class="px-5 py-2.5 rounded-lg bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 transition-colors min-h-[44px]" onclick="closeConfirmProgressModal()">
+          取消
+        </button>
+        <button class="px-5 py-2.5 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors min-h-[44px]" id="confirmProgressBtn">
+          确认修改
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== JS 模块加载 ========== -->
+  <script src="js/storage.js"></script>
+  <script src="js/production-form.js"></script>
+  <script src="js/production-list.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
