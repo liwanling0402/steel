@@ -12,10 +12,10 @@
   <title>Steel - 钢材加工生产管理系统</title>
 
   <!-- PWA Manifest -->
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icons/icon-192x192.svg">
-  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.svg">
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.svg">
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192x192.svg">
 
   <!-- 内联关键布局CSS（替代Tailwind CDN，无需外部加载） -->
   <style>
@@ -252,7 +252,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function(reg) {
+        navigator.serviceWorker.register('sw.js', { scope: '/' }).then(function(reg) {
           console.log('[PWA] Service Worker registered:', reg.scope);
           // 监听更新
           reg.addEventListener('updatefound', function() {
