@@ -1,7 +1,7 @@
 /* ==========================================
    Steel 钢材管理系统 - 应用主入口
    负责：初始化、页面路由切换、全局状态
-   v2.3 - 财务对账表格弹窗（在线编辑计算，确认后导出Excel）
+   v3.0 - 三层架构、智能客服AI、财务深度集成、全站加固
    ========================================== */
 
 // 当前激活的页面
@@ -14,13 +14,18 @@ function initApp() {
   // 渲染表单页（默认首页）
   renderForm();
 
+  // 初始化智能客服
+  if (typeof initCustomerService === 'function') {
+    initCustomerService();
+  }
+
   // 绑定键盘快捷键
   bindKeyboardShortcuts();
 
-  console.log('🏭 Steel 钢材管理系统 v2.3 已就绪');
+  console.log('🏭 Steel 钢材管理系统 v3.0 已就绪');
   console.log('   - 数据存储在浏览器 localStorage');
   console.log('   - 当前计划总数: ' + getPlanCount());
-  console.log('   - 新功能: 财务对账表格（在线编辑计算 → 导出Excel）');
+  console.log('   - 新功能: 三层架构、智能客服AI、财务深度集成');
 }
 
 /**
@@ -111,8 +116,9 @@ function bindKeyboardShortcuts() {
       return;
     }
 
-    // Escape 关闭弹窗（优先级：搜索结果 > 财务表格 > 三级详情 > 二次确认 > 进度弹窗 > 编辑弹窗 > 删除弹窗）
+    // Escape 关闭弹窗（优先级：客服窗口 > 搜索结果 > 财务表格 > 三级详情 > 二次确认 > 进度弹窗 > 编辑弹窗 > 删除弹窗）
     if (e.key === 'Escape') {
+      var csWin = document.getElementById('csChatWindow');
       var searchResultModal = document.getElementById('searchResultModal');
       var financeTableModal = document.getElementById('financeTableModal');
       var detailModal = document.getElementById('detailModal');
@@ -121,6 +127,11 @@ function bindKeyboardShortcuts() {
       var editModal = document.getElementById('editModal');
       var deleteModal = document.getElementById('deleteModal');
 
+      if (csWin && csWin.classList.contains('cs-open') && !csWin.classList.contains('cs-minimized')) {
+        e.preventDefault();
+        if (typeof closeCustomerService === 'function') closeCustomerService();
+        return;
+      }
       if (searchResultModal && searchResultModal.classList.contains('show')) {
         e.preventDefault();
         closeSearchResultModal();

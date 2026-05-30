@@ -1,6 +1,6 @@
 /* ==========================================
    Steel 钢材管理系统 - 生产计划列表模块
-   v2.2 - 三级详情弹窗（含财务模块）、进度管理
+   v3.0 - 三级详情弹窗（含财务模块）、进度管理、预警系统、历史查询
    ========================================== */
 
 // 当前编辑的 ID（null 表示新建模式）
@@ -22,6 +22,10 @@ var isEditingSubmitting = false;
 // 三级详情弹窗相关
 var detailPlanId = null;
 var isDetailSaving = false;
+// 预警面板
+var isAlertPanelExpanded = false;
+// 历史查询
+var historySearchTimer = null;
 
 /**
  * 渲染生产计划列表页面
@@ -30,7 +34,14 @@ function renderList() {
   var container = document.getElementById('listContainer');
   if (!container) return;
 
-  var plans = getPlans();
+  var plans;
+  try {
+    plans = getPlans();
+    if (!Array.isArray(plans)) plans = [];
+  } catch (e) {
+    console.error('[列表] 读取数据失败:', e);
+    plans = [];
+  }
 
   container.innerHTML = '\
     <!-- 筛选工具栏 -->\
@@ -61,16 +72,13 @@ function renderList() {
           <button class="btn-secondary text-sm py-2 px-3" onclick="handleExportData()" title="导出JSON数据">\
             📥 导出\
           </button>\
-          <button class="btn-secondary text-sm py-2 px-3" onclick="handleExportExcel()" title="导出生产Excel(CSV)">\
-            📊 Excel\
-          </button>\
-          <button class="btn-secondary text-sm py-2 px-3" onclick="openFinanceTableModal()" title="打开财务对账表格">\
-            💰 财务\
+          <button class="btn-primary text-sm py-2 px-3" onclick="openFinanceTableModal()" title="打开财务对账在线编辑表格">\
+            💰 财务对账\
           </button>\
           <button class="btn-secondary text-sm py-2 px-3" onclick="document.getElementById(\'importFile\').click()" title="导入数据">\
             📤 导入\
           </button>\
-          <input type="file" id="importFile" accept=".json" class="hidden" onchange="handleImport(event)" />\
+          \r\n          <button class=\"btn-secondary text-sm py-2 px-3\" onclick=\"openHistoryModal()\" title=\"查看历史存档数据\">\r\n            📅 历史\r\n          </button>\r\n          <input type="file" id="importFile" accept=".json" class="hidden" onchange="handleImport(event)" />\
         </div>\
       </div>\
     </div>\
@@ -90,6 +98,7 @@ function renderList() {
   ';
 
   // 渲染各区块
+  renderAlertPanel(plans);
   renderProgressStats(plans);
   renderStats(plans);
   renderListContent(plans);
@@ -768,7 +777,12 @@ function openProgressModal(id) {
   if (isSavingProgress) return;
 
   progressPlanId = id;
-  var plan = getPlanById(id);
+  var plan;
+  try {
+    plan = getPlanById(id);
+  } catch (e) {
+    plan = null;
+  }
   if (!plan) {
     showToast('未找到该计划，可能已被删除', 'error');
     return;
@@ -1204,7 +1218,7 @@ function handleExportData() {
 }
 
 /**
- * 导出 Excel (CSV)（包装 showToast）
+ * 导出 Excel (CSV) — 对账报表（包装 showToast）
  */
 function handleExportExcel() {
   var result = exportExcel();
@@ -1294,7 +1308,12 @@ function openDetailModal(id) {
 
   detailPlanId = id;
   isDetailSaving = false;
-  var plan = getPlanById(id);
+  var plan;
+  try {
+    plan = getPlanById(id);
+  } catch (e) {
+    plan = null;
+  }
   if (!plan) {
     showToast('未找到该计划', 'error');
     return;
@@ -1470,30 +1489,7 @@ function openDetailModal(id) {
               <div class="text-xs text-gray-400 mt-1">= 单价 × 数量(' + plan.quantity + ')</div>\
             </div>\
             \
-            <!-- 已收金额 -->\
-            <div>\
-              <label class="form-label text-xs">已收金额（元）</label>\
-              <input type="number" id="detailReceivedAmount" class="form-input" value="' + (plan.receivedAmount || '') + '" min="0" step="0.01" placeholder="输入已收金额" onchange="detailAutoCalcTotal()" />\
-            </div>\
-            \
-            <!-- 未收欠款 -->\
-            <div class="bg-red-50 rounded-lg p-3" id="detailUnpaidBox">\
-              <div class="flex items-center justify-between">\
-                <span class="text-sm text-gray-500">未收欠款</span>\
-                <span class="text-lg font-bold text-red-600" id="detailUnpaidAmount">' + formatMoney(plan.unpaidAmount || 0) + ' 元</span>\
-              </div>\
-            </div>\
-            \
-            <!-- 对账备注 -->\
-            <div>\
-              <label class="form-label text-xs">对账备注</label>\
-              <textarea id="detailFinanceRemark" class="form-textarea" rows="2" maxlength="200" placeholder="记录对账信息...">' + escapeHtml(plan.financeRemark || '') + '</textarea>\
-            </div>\
-            \
-            <!-- 财务保存按钮 -->\
-            <button class="btn-primary w-full py-2.5" id="detailSaveFinanceBtn" onclick="detailSaveFinance()">\
-              💾 保存财务数据\
-            </button>\
+            <!-- 已收金额（多次回款记录） -->            <div>              <div class="flex items-center justify-between mb-1.5">                <label class="form-label text-xs mb-0">回款记录</label>                <span class="text-xs font-bold" style="color:#16a34a;" id="detailReceivedTotal">¥0.00</span>              </div>              <div class="bg-gray-50 rounded-lg p-2 mb-2 max-h-32 overflow-y-auto" id="detailPaymentRecords">                <div class="text-xs text-gray-400 text-center py-2">暂无回款记录</div>              </div>              <!-- 新增回款 -->              <div class="flex gap-2 items-end flex-wrap">                <div class="flex-1 min-w-[80px]">                  <label class="text-xs text-gray-400">金额（元）</label>                  <input type="number" id="detailNewPmtAmount" class="form-input text-sm" min="0.01" step="0.01" placeholder="0.00" />                </div>                <div class="w-28">                  <label class="text-xs text-gray-400">日期</label>                  <input type="date" id="detailNewPmtDate" class="form-input text-sm" />                </div>                <div class="w-24">                  <label class="text-xs text-gray-400">方式</label>                  <select id="detailNewPmtMethod" class="form-select text-sm">                    <option value="银行转账">银行转账</option>                    <option value="现金">现金</option>                    <option value="微信">微信</option>                    <option value="支付宝">支付宝</option>                    <option value="支票">支票</option>                    <option value="其他">其他</option>                  </select>                </div>                <button class="btn-primary text-xs py-2 px-3 flex-shrink-0" onclick="detailAddPayment()" style="min-height:38px;">➕ 录入</button>              </div>            </div>                        <!-- 未收欠款 -->            <div class="bg-red-50 rounded-lg p-3" id="detailUnpaidBox">              <div class="flex items-center justify-between">                <span class="text-sm text-gray-500">未收欠款</span>                <span class="text-lg font-bold text-red-600" id="detailUnpaidAmount">¥0.00</span>              </div>            </div>                        <!-- 对账备注 -->            <div>              <label class="form-label text-xs">对账备注</label>              <textarea id="detailFinanceRemark" class="form-textarea" rows="2" maxlength="200" placeholder="记录对账信息..."></textarea>            </div>            <!-- 财务保存按钮 -->            <button class="btn-primary w-full py-2.5 mt-3" onclick="detailSaveFinance()">💰 保存财务数据</button>\
           </div>\
           \
           <!-- 财务操作日志 -->\
@@ -1516,13 +1512,39 @@ function openDetailModal(id) {
         <button class="btn-secondary text-sm" onclick="openEditModal(\'' + plan.id + '\')">✏️ 编辑</button>\
         <button class="btn-secondary text-sm" onclick="openDeleteModal(\'' + plan.id + '\')">🗑️ 删除</button>\
       </div>\
-      <button class="btn-secondary" onclick="closeDetailModal()">关闭</button>\
+      <div class="flex space-x-2">\
+        <button class="btn-primary text-sm" onclick="closeDetailModal(); openFinanceTableModal()">💰 财务对账</button>\
+        <button class="btn-secondary" onclick="closeDetailModal()">关闭</button>\
+      </div>\
     </div>\
   ';
 
   // 初始化选中状态
   pendingProgressStep = plan.processStep || '';
   pendingProgressStatus = plan.progressStatus || 'pending';
+
+  // 初始化工序进度条
+  setTimeout(function () { updateDetailProgressBar(plan.processStep || ''); }, 100);
+
+  // 初始化回款记录渲染
+  setTimeout(function () {
+    var recordsContainer = document.getElementById('detailPaymentRecords');
+    if (recordsContainer) {
+      recordsContainer.innerHTML = buildPaymentRecordsHtml(plan);
+    }
+    // 初始化回款日期默认值
+    var dateEl = document.getElementById('detailNewPmtDate');
+    if (dateEl) {
+      var today = new Date();
+      dateEl.value = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+    }
+    // 更新已收总额显示
+    var records = plan.paymentRecords || [];
+    var totalReceived = 0;
+    records.forEach(function (r) { totalReceived += Number(r.amount) || 0; });
+    var totalEl = document.getElementById('detailReceivedTotal');
+    if (totalEl) totalEl.textContent = '已收总计: ¥' + formatMoney(totalReceived);
+  }, 150);
 
   // 关闭页面滚动
   document.body.classList.add('modal-open');
@@ -1561,6 +1583,8 @@ function detailSelectStep(event, stepKey) {
       el.classList.add('completed-step');
     }
   });
+  // 更新工序进度条
+  updateDetailProgressBar(stepKey);
 }
 
 /**
@@ -1677,43 +1701,7 @@ function detailAutoCalcTotal() {
   }
 }
 
-/**
- * 详情弹窗中保存财务数据
- */
-function detailSaveFinance() {
-  if (!detailPlanId || isDetailSaving) return;
-  isDetailSaving = true;
 
-  try {
-    var unitPriceEl = document.getElementById('detailUnitPrice');
-    var receivedEl = document.getElementById('detailReceivedAmount');
-    var remarkEl = document.getElementById('detailFinanceRemark');
-
-    var unitPrice = unitPriceEl ? parseFloat(unitPriceEl.value) || 0 : 0;
-    var received = receivedEl ? parseFloat(receivedEl.value) || 0 : 0;
-    var remark = remarkEl ? remarkEl.value.trim() : '';
-
-    var result = updatePlanFinance(detailPlanId, {
-      unitPrice: unitPrice,
-      receivedAmount: received,
-      financeRemark: remark
-    });
-
-    if (!result) {
-      showToast('保存失败', 'error');
-      isDetailSaving = false;
-      return;
-    }
-
-    showToast('财务数据保存成功！', 'success');
-    refreshList();
-    openDetailModal(detailPlanId);
-  } catch (err) {
-    showToast('保存失败: ' + err.message, 'error');
-  }
-
-  isDetailSaving = false;
-}
 
 /**
  * 格式化金额显示
@@ -2231,5 +2219,426 @@ function doFinanceExport(plans) {
     showToast('财务账单导出成功！共 ' + plans.length + ' 条记录', 'success');
   } catch (err) {
     showToast('导出失败: ' + err.message, 'error');
+  }
+}
+
+// ==========================================
+// 多次回款管理（三级详情弹窗）
+// ==========================================
+
+/**
+ * 构建回款记录列表 HTML
+ */
+function buildPaymentRecordsHtml(plan) {
+  var records = plan.paymentRecords || [];
+  if (records.length === 0) {
+    return '<div class="text-xs text-gray-400 text-center py-2">暂无回款记录</div>';
+  }
+  var html = '';
+  records.slice().reverse().forEach(function (r) {
+    var dateStr = r.date || '-';
+    html += '\
+      <div class="flex items-center justify-between text-xs bg-white rounded px-2 py-1.5 border border-gray-100">\n\
+        <div class="flex items-center gap-1.5 flex-1 min-w-0">\n\
+          <span class="text-green-600 font-bold flex-shrink-0">¥' + formatMoney(r.amount || 0) + '</span>\n\
+          <span class="text-gray-400">' + (r.method || '-') + '</span>\n\
+          <span class="text-gray-300 flex-shrink-0">' + dateStr + '</span>\n\
+          ' + (r.remark ? '<span class="text-gray-400 truncate">' + escapeHtml(r.remark) + '</span>' : '') + '\n\
+        </div>\n\
+        <button class="text-red-400 hover:text-red-600 text-xs ml-1 flex-shrink-0" onclick="detailDeletePayment(event, \'' + r.id + '\')" title="删除此回款">✕</button>\n\
+      </div>\n\
+    ';
+  });
+  return html;
+}
+
+/**
+ * 添加一笔回款
+ */
+function detailAddPayment() {
+  if (!detailPlanId || isDetailSaving) return;
+  var amountEl = document.getElementById('detailNewPmtAmount');
+  var dateEl = document.getElementById('detailNewPmtDate');
+  var methodEl = document.getElementById('detailNewPmtMethod');
+
+  var amount = parseFloat(amountEl ? amountEl.value : 0);
+  if (isNaN(amount) || amount <= 0) {
+    showToast('请输入有效的回款金额', 'warning');
+    return;
+  }
+
+  var result = addPaymentRecord(detailPlanId, {
+    amount: amount,
+    date: dateEl ? dateEl.value : getTodayStr(),
+    method: methodEl ? methodEl.value : '银行转账',
+    remark: ''
+  });
+
+  if (result) {
+    showToast('回款 ¥' + formatMoney(amount) + ' 录入成功！', 'success');
+    // 清空输入
+    if (amountEl) amountEl.value = '';
+    // 刷新详情弹窗
+    refreshList();
+    openDetailModal(detailPlanId);
+  } else {
+    showToast('回款录入失败', 'error');
+  }
+}
+
+/**
+ * 删除一笔回款
+ */
+function detailDeletePayment(event, paymentId) {
+  event.stopPropagation();
+  if (!detailPlanId || isDetailSaving) return;
+  if (!confirm('确定要删除这笔回款记录吗？')) return;
+
+  var result = deletePaymentRecord(detailPlanId, paymentId);
+  if (result) {
+    showToast('回款记录已删除', 'info');
+    refreshList();
+    openDetailModal(detailPlanId);
+  } else {
+    showToast('删除失败', 'error');
+  }
+}
+
+/**
+ * 更新详情弹窗中自动计算（改为从回款记录汇总）
+ */
+function detailAutoCalcTotal() {
+  var unitPriceEl = document.getElementById('detailUnitPrice');
+  var totalEl = document.getElementById('detailTotalPrice');
+  var unpaidBox = document.getElementById('detailUnpaidBox');
+  var unpaidEl = document.getElementById('detailUnpaidAmount');
+
+  if (!detailPlanId) return;
+  var plan = getPlanById(detailPlanId);
+  if (!plan) return;
+
+  var unitPrice = unitPriceEl ? parseFloat(unitPriceEl.value) || 0 : 0;
+  var quantity = Number(plan.quantity) || 0;
+  var totalPrice = unitPrice * quantity;
+
+  // 已收从回款记录汇总
+  var records = plan.paymentRecords || [];
+  var totalReceived = 0;
+  records.forEach(function (r) { totalReceived += Number(r.amount) || 0; });
+
+  var unpaid = totalPrice - totalReceived;
+  if (unpaid < 0) unpaid = 0;
+
+  if (totalEl) totalEl.textContent = formatMoney(totalPrice) + ' 元';
+  if (unpaidEl) unpaidEl.textContent = formatMoney(unpaid) + ' 元';
+
+  // 欠款区域颜色变化
+  if (unpaidBox) {
+    if (unpaid <= 0 && totalPrice > 0) {
+      unpaidBox.style.background = '#f0fdf4';
+      if (unpaidEl) unpaidEl.style.color = '#16a34a';
+    } else if (unpaid > 0) {
+      unpaidBox.style.background = '#fef2f2';
+      if (unpaidEl) unpaidEl.style.color = '#dc2626';
+    } else {
+      unpaidBox.style.background = '#f3f4f6';
+      if (unpaidEl) unpaidEl.style.color = '#9ca3af';
+    }
+  }
+
+  // 更新已收总额显示
+  var receivedTotalEl = document.getElementById('detailReceivedTotal');
+  if (receivedTotalEl) {
+    receivedTotalEl.textContent = formatMoney(totalReceived);
+  }
+}
+
+/**
+ * 详情弹窗中保存财务数据（适配多次回款）
+ */
+function detailSaveFinance() {
+  if (!detailPlanId || isDetailSaving) return;
+  isDetailSaving = true;
+
+  try {
+    var unitPriceEl = document.getElementById('detailUnitPrice');
+    var remarkEl = document.getElementById('detailFinanceRemark');
+
+    var unitPrice = unitPriceEl ? parseFloat(unitPriceEl.value) || 0 : 0;
+    var remark = remarkEl ? remarkEl.value.trim() : '';
+
+    // 获取回款记录汇总
+    var plan = getPlanById(detailPlanId);
+    var records = plan ? (plan.paymentRecords || []) : [];
+    var totalReceived = 0;
+    records.forEach(function (r) { totalReceived += Number(r.amount) || 0; });
+
+    var result = updatePlanFinance(detailPlanId, {
+      unitPrice: unitPrice,
+      receivedAmount: totalReceived,
+      financeRemark: remark
+    });
+
+    if (!result) {
+      showToast('保存失败', 'error');
+      isDetailSaving = false;
+      return;
+    }
+
+    showToast('财务数据保存成功！', 'success');
+    refreshList();
+    openDetailModal(detailPlanId);
+  } catch (err) {
+    showToast('保存失败: ' + err.message, 'error');
+  }
+
+  isDetailSaving = false;
+}
+
+// ==========================================
+// 历史存档查询
+// ==========================================
+
+/**
+ * 打开历史数据查询弹窗
+ */
+function openHistoryModal() {
+  // 移除旧弹窗
+  var oldModal = document.getElementById('historyModal');
+  if (oldModal) oldModal.remove();
+
+  var dates = getArchiveDates();
+
+  var modal = document.createElement('div');
+  modal.id = 'historyModal';
+  modal.className = 'fixed inset-0 z-[90] hidden items-center justify-center bg-black/40';
+  modal.innerHTML = '\
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">\n\
+      <div class="flex items-center justify-between p-5 border-b border-gray-100 flex-shrink-0">\n\
+        <div class="flex items-center space-x-3">\n\
+          <h3 class="text-lg font-bold text-gray-800">📅 历史数据查询</h3>\n\
+          <span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">共 ' + dates.length + ' 天存档</span>\n\
+        </div>\n\
+        <button class="text-gray-400 hover:text-gray-600 text-xl leading-none p-1" onclick="closeHistoryModal()">&times;</button>\n\
+      </div>\n\
+      <div class="p-4 border-b border-gray-100 flex-shrink-0">\n\
+        <div class="flex gap-2 items-center flex-wrap">\n\
+          <label class="text-sm font-bold text-gray-600 flex-shrink-0">选择日期：</label>\n\
+          <select id="historyDateSelect" class="form-select flex-1 min-w-[200px]" onchange="loadHistoryData()">\n\
+            <option value="">-- 请选择存档日期 --</option>\n\
+            ' + dates.map(function (d) { return '<option value="' + d + '">' + d + '</option>'; }).join('\n            ') + '\n\
+          </select>\n\
+          <button class="btn-secondary text-sm flex-shrink-0" onclick="closeHistoryModal()">关闭</button>\n\
+        </div>\n\
+      </div>\n\
+      <div class="p-4 overflow-y-auto flex-1" id="historyDataContent">\n\
+        <p class="text-gray-400 text-center py-8">请选择存档日期查看历史数据</p>\n\
+      </div>\n\
+    </div>\n\
+  ';
+
+  document.body.appendChild(modal);
+  document.body.classList.add('modal-open');
+  modal.classList.add('show');
+  modal.onclick = function (e) {
+    if (e.target === modal) closeHistoryModal();
+  };
+}
+
+/**
+ * 加载指定日期的历史数据
+ */
+function loadHistoryData() {
+  var select = document.getElementById('historyDateSelect');
+  var content = document.getElementById('historyDataContent');
+  if (!select || !content) return;
+
+  var dateStr = select.value;
+  if (!dateStr) {
+    content.innerHTML = '<p class="text-gray-400 text-center py-8">请选择存档日期查看历史数据</p>';
+    return;
+  }
+
+  var archive = getArchiveByDate(dateStr);
+  if (!archive || !archive.data || archive.data.length === 0) {
+    content.innerHTML = '<p class="text-gray-400 text-center py-8">该日期暂无存档数据</p>';
+    return;
+  }
+
+  var plans = archive.data;
+  var html = '\
+    <div class="mb-3 flex items-center justify-between">\n\
+      <div>\n\
+        <span class="text-sm text-gray-500">📅 存档日期：<b>' + dateStr + '</b></span>\n\
+        <span class="text-sm text-gray-500 ml-3">📋 共 <b>' + plans.length + '</b> 条记录</span>\n\
+        <span class="text-sm text-gray-500 ml-3">🕐 存档时间：<b>' + (archive.timestamp || '-').slice(0, 19).replace('T', ' ') + '</b></span>\n\
+      </div>\n\
+    </div>\n\
+    <div class="table-wrapper">\n\
+      <table class="w-full text-sm">\n\
+        <thead>\n\
+          <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">\n\
+            <th class="px-3 py-2 text-left">计划编号</th>\n\
+            <th class="px-3 py-2 text-left">钢材类型</th>\n\
+            <th class="px-3 py-2 text-left">规格</th>\n\
+            <th class="px-3 py-2 text-right">数量</th>\n\
+            <th class="px-3 py-2 text-center">工序</th>\n\
+            <th class="px-3 py-2 text-center">进度</th>\n\
+            <th class="px-3 py-2 text-left">交货日期</th>\n\
+            <th class="px-3 py-2 text-center">状态</th>\n\
+            <th class="px-3 py-2 text-left">客户</th>\n\
+          </tr>\n\
+        </thead>\n\
+        <tbody class="divide-y divide-gray-100">\n\
+  ';
+
+  plans.forEach(function (plan) {
+    var progressLabel = getProgressLabel(plan.progressStatus);
+    var progressClass = getProgressClass(plan.progressStatus);
+    var stepLabel = getStepLabel(plan.processStep);
+    var statusLabels = { pending: '待生产', processing: '生产中', completed: '已完成', cancelled: '已取消' };
+    var statusClasses = { pending: 'status-pending', processing: 'status-processing', completed: 'status-completed', cancelled: 'status-cancelled' };
+
+    html += '\
+          <tr class="hover:bg-gray-50">\n\
+            <td class="px-3 py-2 font-medium text-gray-800">' + escapeHtml(plan.planNo) + '</td>\n\
+            <td class="px-3 py-2 text-gray-600">' + escapeHtml(plan.steelType) + '</td>\n\
+            <td class="px-3 py-2 text-gray-600">' + escapeHtml(plan.specification) + '</td>\n\
+            <td class="px-3 py-2 text-right text-gray-800">' + plan.quantity + ' ' + escapeHtml(plan.unit) + '</td>\n\
+            <td class="px-3 py-2 text-center text-gray-600 text-xs">' + escapeHtml(stepLabel) + '</td>\n\
+            <td class="px-3 py-2 text-center"><span class="progress-badge ' + progressClass + '">' + progressLabel + '</span></td>\n\
+            <td class="px-3 py-2 text-gray-600">' + formatDate(plan.deliveryDate) + '</td>\n\
+            <td class="px-3 py-2 text-center"><span class="status-badge ' + (statusClasses[plan.status] || '') + '">' + (statusLabels[plan.status] || plan.status) + '</span></td>\n\
+            <td class="px-3 py-2 text-gray-600">' + (plan.customer ? escapeHtml(plan.customer) : '<span class="text-gray-300">-</span>') + '</td>\n\
+          </tr>\n\
+    ';
+  });
+
+  html += '\
+        </tbody>\n\
+      </table>\n\
+    </div>\n\
+  ';
+
+  content.innerHTML = html;
+}
+
+/**
+ * 关闭历史查询弹窗
+ */
+function closeHistoryModal() {
+  var modal = document.getElementById('historyModal');
+  if (modal) {
+    modal.classList.remove('show');
+    modal.remove();
+  }
+  document.body.classList.remove('modal-open');
+}
+
+/**
+ * 更新详情弹窗中的工序进度条
+ * @param {string} currentStep - 当前工序 key
+ */
+function updateDetailProgressBar(currentStep) {
+  try {
+    var totalSteps = PROCESS_STEPS ? PROCESS_STEPS.length : 7;
+    var stepIdx = PROCESS_STEPS ? PROCESS_STEPS.findIndex(function (s) { return s.key === currentStep; }) : -1;
+    if (stepIdx < 0) { stepIdx = 0; }
+    // 进度 = (当前步骤索引+1) / 总步骤数 * 100
+    var percent = Math.min(100, Math.max(0, Math.round((stepIdx + 1) / totalSteps * 100)));
+    var percentEl = document.getElementById('detailProgressPercent');
+    var fillEl = document.getElementById('detailProgressFill');
+    if (percentEl) percentEl.textContent = percent + '%';
+    if (fillEl) fillEl.style.width = percent + '%';
+  } catch (e) { /* ignore progress bar errors */ }
+}
+
+
+// ==========================================
+// 首页预警面板（每次渲染列表时调用）
+// ==========================================
+
+/**
+ * 渲染预警面板（订单即将到期/已延期提醒）
+ */
+function renderAlertPanel(plans) {
+  var container = document.getElementById('listContainer');
+  if (!container) return;
+
+  var alerts = getAlertOrders();
+
+  if (alerts.length === 0) return;
+
+  var panelHtml = '\
+    <div class="bg-white rounded-xl shadow-sm border border-red-200 mb-4 overflow-hidden" id="alertPanel">\n\
+      <div class="flex items-center justify-between p-3 cursor-pointer select-none" onclick="toggleAlertPanel()" style="background:linear-gradient(135deg,#fef2f2,#fff7ed);">\n\
+        <div class="flex items-center gap-2">\n\
+          <span class="text-lg">⚠️</span>\n\
+          <span class="font-bold text-red-600 text-sm">订单预警</span>\n\
+          <span class="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">' + alerts.length + ' 条</span>\n\
+        </div>\n\
+        <span class="text-gray-400 text-xs" id="alertToggleIcon">' + (isAlertPanelExpanded ? '▲ 收起' : '▼ 展开') + '</span>\n\
+      </div>\n\
+      <div class="' + (isAlertPanelExpanded ? '' : 'hidden') + '" id="alertPanelBody">\n\
+        <div class="px-3 pb-3 space-y-2">\n\
+  ';
+
+  alerts.forEach(function (alert) {
+    var plan = alert.plan;
+    var level = alert.level;
+    var daysLabel = '';
+    if (alert.daysLeft < 0) {
+      daysLabel = '超期 <b>' + Math.abs(alert.daysLeft) + '</b> 天';
+    } else if (alert.daysLeft === 0) {
+      daysLabel = '今天到期！';
+    } else {
+      daysLabel = '还剩 <b>' + alert.daysLeft + '</b> 天';
+    }
+
+    panelHtml += '\
+          <div class="flex items-center justify-between p-2.5 rounded-lg cursor-pointer hover:opacity-80 transition-opacity" style="background:' + level.bg + ';border-left:3px solid ' + level.color + ';" onclick="openDetailModal(\'' + plan.id + '\')" title="点击查看详情">\n\
+            <div class="flex items-center gap-2 flex-1 min-w-0">\n\
+              <span>' + level.icon + '</span>\n\
+              <span class="font-semibold text-sm truncate" style="color:' + level.color + ';">' + escapeHtml(plan.planNo) + '</span>\n\
+              <span class="text-xs text-gray-500 truncate hidden sm:inline">' + escapeHtml(plan.steelType) + ' | ' + escapeHtml(plan.customer || '-') + '</span>\n\
+            </div>\n\
+            <div class="flex items-center gap-2 flex-shrink-0">\n\
+              <span class="text-xs font-bold" style="color:' + level.color + ';">' + daysLabel + '</span>\n\
+              <span class="text-xs text-gray-400">📅 ' + formatDate(plan.deliveryDate) + '</span>\n\
+            </div>\n\
+          </div>\n\
+    ';
+  });
+
+  panelHtml += '\
+        </div>\n\
+      </div>\n\
+    </div>\n\
+  ';
+
+  var filterBar = container.querySelector('.bg-white.rounded-xl.shadow-sm.border.border-gray-200.p-4');
+  if (filterBar) {
+    var oldAlert = document.getElementById('alertPanel');
+    if (oldAlert) oldAlert.remove();
+    var tempDiv = document.createElement('div');
+    tempDiv.innerHTML = panelHtml;
+    var alertNode = tempDiv.firstElementChild;
+    filterBar.parentNode.insertBefore(alertNode, filterBar.nextSibling);
+  }
+}
+
+/**
+ * 切换预警面板展开/收起
+ */
+function toggleAlertPanel() {
+  isAlertPanelExpanded = !isAlertPanelExpanded;
+  var body = document.getElementById('alertPanelBody');
+  var icon = document.getElementById('alertToggleIcon');
+  if (body) {
+    if (isAlertPanelExpanded) { body.classList.remove('hidden'); }
+    else { body.classList.add('hidden'); }
+  }
+  if (icon) {
+    icon.textContent = isAlertPanelExpanded ? '▲ 收起' : '▼ 展开';
   }
 }

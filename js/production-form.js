@@ -399,9 +399,15 @@ function showToast(message, type) {
  * @returns {string}
  */
 function escapeHtml(str) {
-  var div = document.createElement('div');
-  div.appendChild(document.createTextNode(str));
-  return div.innerHTML;
+  if (str == null) return '';
+  if (typeof str !== 'string') str = String(str);
+  try {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  } catch (e) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
 }
 
 /**
