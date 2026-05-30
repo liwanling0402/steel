@@ -4,51 +4,46 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>钢材加工生产管理系统</title>
-  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gray-100 text-gray-800">
   <div class="container mx-auto px-4 py-8 max-w-5xl">
     <h1 class="text-3xl font-bold text-center mb-8">钢材加工生产管理系统</h1>
 
+    <!-- 搜索功能 -->
+    <div class="bg-white rounded-lg shadow p-4 mb-6">
+      <input type="text" id="searchInput" placeholder="🔍 搜索客户名称 / 钢材编号" class="w-full border rounded px-3 py-2">
+    </div>
+
     <!-- 表单区域 -->
     <div class="bg-white rounded-lg shadow p-6 mb-8">
       <h2 class="text-xl font-semibold mb-4">新增生产计划</h2>
       <form id="planForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <input type="text" id="customer" placeholder="客户名称" required
-          class="border rounded px-3 py-2">
-        <input type="text" id="steelNo" placeholder="钢材编号" required
-          class="border rounded px-3 py-2">
-        <input type="number" id="weight" placeholder="重量（吨）" required
-          class="border rounded px-3 py-2">
-        <input type="number" id="quantity" placeholder="数量" required
-          class="border rounded px-3 py-2">
-        <input type="text" id="size" placeholder="尺寸（mm）" required
-          class="border rounded px-3 py-2">
-        <input type="date" id="shipDate" required
-          class="border rounded px-3 py-2">
+        <input type="text" id="customer" placeholder="客户名称" required class="border rounded px-3 py-2">
+        <input type="text" id="steelNo" placeholder="钢材编号" required class="border rounded px-3 py-2">
+        <input type="number" id="weight" placeholder="重量（吨）" min="0.01" step="0.01" required class="border rounded px-3 py-2">
+        <input type="number" id="quantity" placeholder="数量" min="1" step="1" required class="border rounded px-3 py-2">
+        <input type="text" id="size" placeholder="尺寸（mm）" required class="border rounded px-3 py-2">
+        <input type="date" id="shipDate" required class="border rounded px-3 py-2">
         <textarea id="remark" placeholder="备注" class="md:col-span-2 border rounded px-3 py-2"></textarea>
         <div class="md:col-span-2 flex gap-2">
-          <button type="submit" id="submitBtn"
-            class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-            提交计划
-          </button>
-          <button type="button" id="cancelBtn" style="display:none"
-            class="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600">
-            取消编辑
-          </button>
+          <button type="submit" id="submitBtn" class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">提交计划</button>
+          <button type="button" id="cancelBtn" style="display:none" class="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600">取消编辑</button>
         </div>
       </form>
     </div>
 
-    <!-- 当日操作按钮 -->
+    <!-- 操作按钮 -->
     <div class="bg-white rounded-lg shadow p-4 mb-6 flex gap-4">
-      <button id="createFullPlanBtn" class="w-full bg-green-600 text-white py-3 rounded-lg text-lg hover:bg-green-700">
-        📄 生成今日完整项目计划表
-      </button>
-      <button id="clearTodayBtn" class="w-full bg-red-500 text-white py-3 rounded-lg text-lg hover:bg-red-600">
-        🗑️ 清空今日所有计划
-      </button>
+      <button id="createFullPlanBtn" class="w-full bg-green-600 text-white py-3 rounded-lg text-lg hover:bg-green-700">📄 生成今日完整项目计划表</button>
+      <button id="clearTodayBtn" class="w-full bg-red-500 text-white py-3 rounded-lg text-lg hover:bg-red-600">🗑️ 清空今日所有计划</button>
+    </div>
+
+    <!-- 数据统计汇总 -->
+    <div class="bg-white rounded-lg shadow p-4 mb-6 text-center">
+      <span class="mx-4 text-lg">今日单数：<b id="sumCount">0</b> 单</span>
+      <span class="mx-4 text-lg">今日总重量：<b id="sumWeight">0</b> 吨</span>
+      <span class="mx-4 text-lg">今日总数量：<b id="sumQty">0</b> 件</span>
     </div>
 
     <!-- 今日录入列表 -->
@@ -73,12 +68,13 @@
       </div>
     </div>
 
-    <!-- 正式计划表区域 -->
+    <!-- 正式计划表 -->
     <div id="fullPlanBox" class="bg-white rounded-lg shadow p-6 hidden">
-      <h2 class="text-2xl font-bold text-center mb-6 border-b pb-3">📋 当日完整钢材项目计划表</h2>
-      <div class="text-center mb-4">
-        生成日期：<span id="planDate"></span>
+      <div class="flex justify-between items-center mb-6 border-b pb-3">
+        <h2 class="text-2xl font-bold">📋 当日完整钢材项目计划表</h2>
+        <button id="exportExcelBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">📥 导出Excel文件</button>
       </div>
+      <div class="text-center mb-4">生成日期：<span id="planDate"></span></div>
       <div class="overflow-x-auto">
         <table class="w-full border text-sm">
           <thead class="bg-gray-100">
@@ -96,13 +92,10 @@
           <tbody id="fullPlanTable"></tbody>
         </table>
       </div>
-      <div class="mt-6 text-right text-gray-600">
-        合计单数：<span id="totalCount" class="font-bold">0</span> 单
-      </div>
+      <div class="mt-6 text-right text-gray-600">合计单数：<span id="totalCount" class="font-bold">0</span> 单</div>
     </div>
 
   </div>
-
   <script src="script.js"></script>
 </body>
 </html>
