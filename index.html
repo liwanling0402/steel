@@ -76,6 +76,18 @@
     .opacity-75{opacity:.75}
     @media(min-width:640px){.sm\:hidden{display:none!important}.sm\:flex{display:flex!important}}
     @media(min-width:1024px){.lg\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+    /* PWA 安装引导横幅 */
+    .pwa-banner{position:fixed;bottom:0;left:0;right:0;z-index:999;background:linear-gradient(135deg,#1a2332,#2d4054);color:#fff;padding:16px 20px;display:none;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,.3);animation:slideUp .3s ease-out}
+    .pwa-banner.show{display:flex}
+    .pwa-banner .pwa-icon{font-size:36px;flex-shrink:0}
+    .pwa-banner .pwa-info{flex:1;min-width:0}
+    .pwa-banner .pwa-title{font-size:16px;font-weight:700;margin-bottom:2px}
+    .pwa-banner .pwa-desc{font-size:12px;opacity:.75}
+    .pwa-banner .pwa-btn{flex-shrink:0;background:#4ade80;color:#000;border:none;padding:10px 20px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+    .pwa-banner .pwa-btn:active{transform:scale(.95)}
+    .pwa-banner .pwa-close{flex-shrink:0;background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;padding:4px 8px;cursor:pointer;line-height:1}
+    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    @media(min-width:768px){.pwa-banner{left:50%;right:auto;bottom:20px;transform:translateX(-50%);border-radius:16px;max-width:480px;width:calc(100% - 40px)}}
   </style>
 
   <!-- 自定义样式 -->
@@ -279,5 +291,87 @@
   <script src="js/production-list.js"></script>
   <script src="js/customer-service.js"></script>
   <script src="js/app.js"></script>
+
+  <!-- ========== PWA 安装引导横幅 ========== -->
+  <div class="pwa-banner" id="pwaBanner">
+    <div class="pwa-icon">🏭</div>
+    <div class="pwa-info">
+      <div class="pwa-title">Steel 钢材管理系统</div>
+      <div class="pwa-desc">添加到桌面，像APP一样使用</div>
+    </div>
+    <button class="pwa-btn" id="pwaInstallBtn">立即安装</button>
+    <button class="pwa-close" id="pwaCloseBtn">✕</button>
+  </div>
+
+  <script>
+    var deferredPrompt;
+    var pwaBanner = document.getElementById('pwaBanner');
+    var pwaInstallBtn = document.getElementById('pwaInstallBtn');
+    var pwaCloseBtn = document.getElementById('pwaCloseBtn');
+
+    // 检查是否已经安装
+    function isStandalone() {
+      return window.matchMedia('(display-mode: standalone)').matches
+          || navigator.standalone
+          || document.referrer.includes('android-app://');
+    }
+
+    // 显示安装横幅
+    function showPwaBanner() {
+      if (isStandalone()) return;
+      if (localStorage.getItem('pwa_banner_closed')) return;
+      setTimeout(function() { pwaBanner.classList.add('show'); }, 1500);
+    }
+
+    // 监听 beforeinstallprompt
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      showPwaBanner();
+    });
+
+    // 如果 3 秒后还没触发 beforeinstallprompt，也显示横幅（让用户手动操作）
+    setTimeout(function() {
+      if (!deferredPrompt && !pwaBanner.classList.contains('show')) {
+        showPwaBanner();
+        // 改为引导文字
+        pwaInstallBtn.textContent = '查看教程';
+        pwaInstallBtn.onclick = function() {
+          var ua = navigator.userAgent;
+          if (/iPhone|iPad|iPod/.test(ua)) {
+            alert('iOS Safari：\n点击底部「分享」按钮 → 「添加到主屏幕」');
+          } else if (/Android/.test(ua)) {
+            alert('Chrome/浏览器：\n点击右上角「⋮」菜单 → 「添加到主屏幕」');
+          } else {
+            alert('点击浏览器菜单 → 「安装此网站」或「添加到主屏幕」');
+          }
+        };
+      }
+    }, 3000);
+
+    // 安装按钮
+    pwaInstallBtn.addEventListener('click', function() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function(result) {
+          console.log('[PWA] User choice:', result.outcome);
+          deferredPrompt = null;
+          pwaBanner.classList.remove('show');
+        });
+      }
+    });
+
+    // 关闭按钮
+    pwaCloseBtn.addEventListener('click', function() {
+      pwaBanner.classList.remove('show');
+      localStorage.setItem('pwa_banner_closed', '1');
+    });
+
+    // 已安装就隐藏
+    window.addEventListener('appinstalled', function() {
+      pwaBanner.classList.remove('show');
+      console.log('[PWA] App installed!');
+    });
+  </script>
 </body>
 </html>
