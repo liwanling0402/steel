@@ -3,4 +3,10 @@ body {
 }
 table th, table td {
   border: 1px solid #e5e7eb;
+  padding: 6px;
+}
+#fullPlanBox table th,
+#fullPlanBox table td{
+  border:1px solid #999;
+  padding:10px;
 }
