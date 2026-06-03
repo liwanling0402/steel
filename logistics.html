@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a2332">
+  <title>物流跟踪 - Steel 钢材管理系统</title>
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- 百度地图 JS API -->
+  <script src="https://api.map.baidu.com/api?v=3.0&type=webgl&ak=你的百度地图AK密钥"></script>
+
+  <style>
+    /* ========== 物流页面专属样式 ========== */
+    :root {
+      --logistics-primary: #2563eb;
+      --logistics-transit: #f59e0b;
+      --logistics-arrived: #10b981;
+      --logistics-delayed: #ef4444;
+      --logistics-bg: #f0f2f5;
+    }
+
+    .logistics-page {
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      background: var(--logistics-bg);
+      padding-bottom: calc(20px + var(--safe-bottom));
+    }
+
+    /* 顶部标题栏 */
+    .logistics-header {
+      background: linear-gradient(135deg, #1a2332 0%, #2d4054 100%);
+      padding: 1rem 1.25rem;
+      padding-top: calc(1rem + var(--safe-top));
+      color: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 2px 20px rgba(15,23,32,0.25);
+    }
+
+    .logistics-header-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logistics-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logistics-back-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 1.25rem;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: none;
+    }
+
+    .logistics-back-btn:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    .logistics-back-btn:active {
+      transform: scale(0.95);
+    }
+
+    .logistics-title {
+      font-size: 1.125rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.02em;
+    }
+
+    .logistics-subtitle {
+      font-size: 0.6875rem;
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    /* 主容器 */
+    .logistics-main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    /* 搜索区域 */
+    .logistics-search-card {
+      background: var(--bg-card-solid);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(180,195,210,0.15);
+    }
+
+    .logistics-search-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .logistics-search-field {
+      flex: 1;
+      min-width: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+
+    .logistics-search-field label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .logistics-search-input {
+      padding: 0.75rem 1rem;
+      border: 1.5px solid rgba(180,195,210,0.4);
+      border-radius: var(--radius-xs);
+      background: var(--bg-input);
+      font-size: 0.9375rem;
+      color: var(--text-primary);
+      outline: none;
+      transition: all var(--transition-fast);
+      min-height: 46px;
+    }
+
+    .logistics-search-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+
+    .logistics-search-btn {
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-xs);
+      font-weight: 700;
+      font-size: 0.9375rem;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    .logistics-search-btn:hover {
+      background: linear-gradient(135deg, #1d4ed8, #1e40af);
+      box-shadow: var(--shadow-md);
+    }
+    .logistics-search-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* 内容区双栏 */
+    .logistics-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    /* 左侧地图区 */
+    .logistics-map-card {
+      background: var(--bg-card-solid);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(180,195,210,0.15);
+    }
+
+    .logistics-map-header {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logistics-map-header h3 {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .logistics-map-container {
+      width: 100%;
+      height: 400px;
+      background: #e8ecf1;
+      position: relative;
+    }
+
+    .logistics-map-container .BMap_mask {
+      display: none;
+    }
+
+    /* 坐标编辑区 */
+    .logistics-coord-edit {
+      padding: 0.75rem 1rem;
+      border-top: 1px solid #f3f4f6;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .logistics-coord-field {
+      flex: 1;
+      min-width: 100px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .logistics-coord-field label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .logistics-coord-input {
+      padding: 0.5rem 0.625rem;
+      border: 1.5px solid rgba(180,195,210,0.4);
+      border-radius: 6px;
+      background: var(--bg-input);
+      font-size: 0.8125rem;
+      color: var(--text-primary);
+      outline: none;
+      min-height: 38px;
+      width: 100%;
+    }
+
+    .logistics-coord-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+
+    .logistics-coord-btn {
+      padding: 0.5rem 1rem;
+      background: var(--color-primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      min-height: 38px;
+      white-space: nowrap;
+    }
+
+    .logistics-coord-btn:hover {
+      background: var(--color-primary-dark);
+    }
+
+    .logistics-coord-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* 物流描述输入 */
+    .logistics-desc-field {
+      padding: 0.75rem 1rem;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    .logistics-desc-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-end;
+    }
+
+    .logistics-desc-input {
+      flex: 1;
+      padding: 0.625rem 0.75rem;
+      border: 1.5px solid rgba(180,195,210,0.4);
+      border-radius: 6px;
+      background: var(--bg-input);
+      font-size: 0.875rem;
+      color: var(--text-primary);
+      outline: none;
+      min-height: 40px;
+    }
+
+    .logistics-desc-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+
+    /* 右侧时间轴 */
+    .logistics-timeline-card {
+      background: var(--bg-card-solid);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(180,195,210,0.15);
+      display: flex;
+      flex-direction: column;
+      max-height: 600px;
+    }
+
+    .logistics-timeline-header {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .logistics-timeline-header h3 {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .logistics-timeline-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+
+    /* 时间轴节点 */
+    .logistics-timeline {
+      position: relative;
+      padding-left: 1.75rem;
+    }
+
+    .logistics-timeline::before {
+      content: '';
+      position: absolute;
+      left: 0.5rem;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, #2563eb 0%, #e5e7eb 100%);
+    }
+
+    .logistics-timeline-item {
+      position: relative;
+      padding-bottom: 1.25rem;
+    }
+
+    .logistics-timeline-item:last-child {
+      padding-bottom: 0;
+    }
+
+    .logistics-timeline-dot {
+      position: absolute;
+      left: -1.45rem;
+      top: 0.25rem;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #2563eb;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+      z-index: 1;
+    }
+
+    .logistics-timeline-dot.transit {
+      background: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.2);
+    }
+
+    .logistics-timeline-dot.arrived {
+      background: #10b981;
+      box-shadow: 0 0 0 3px rgba(16,185,129,0.2);
+    }
+
+    .logistics-timeline-dot.departed {
+      background: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+    }
+
+    .logistics-timeline-dot.delayed {
+      background: #ef4444;
+      box-shadow: 0 0 0 3px rgba(239,68,68,0.2);
+    }
+
+    .logistics-timeline-dot.manual {
+      background: #8b5cf6;
+      box-shadow: 0 0 0 3px rgba(139,92,246,0.2);
+    }
+
+    .logistics-timeline-time {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      margin-bottom: 0.125rem;
+      font-weight: 500;
+    }
+
+    .logistics-timeline-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.125rem;
+    }
+
+    .logistics-timeline-desc {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .logistics-timeline-location {
+      font-size: 0.6875rem;
+      color: var(--text-tertiary);
+      margin-top: 0.125rem;
+    }
+
+    /* 空状态 */
+    .logistics-empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+    }
+
+    .logistics-empty-icon {
+      font-size: 3rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .logistics-empty p {
+      font-size: 0.875rem;
+    }
+
+    /* Toast提示 */
+    .logistics-toast {
+      position: fixed;
+      top: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 999;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 0.875rem;
+      box-shadow: var(--shadow-lg);
+      animation: toastIn 0.3s ease-out;
+      pointer-events: none;
+    }
+
+    .logistics-toast.success {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+
+    .logistics-toast.error {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .logistics-toast.warning {
+      background: #fffbeb;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    /* 订单信息卡 */
+    .logistics-order-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      padding: 0.75rem 1rem;
+      background: #f9fafb;
+      border-radius: var(--radius-xs);
+      margin-bottom: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+
+    .logistics-order-info strong {
+      color: var(--text-primary);
+    }
+
+    .logistics-order-info .settle-warning {
+      color: #dc2626;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .logistics-content {
+        grid-template-columns: 1fr;
+      }
+
+      .logistics-map-container {
+        height: 300px;
+      }
+
+      .logistics-search-row {
+        flex-direction: column;
+      }
+
+      .logistics-search-field {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .logistics-search-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .logistics-coord-edit {
+        flex-direction: column;
+      }
+
+      .logistics-coord-field {
+        min-width: 0;
+      }
+
+      .logistics-timeline-card {
+        max-height: none;
+      }
+
+      .logistics-main {
+        padding: 0.75rem;
+      }
+
+      .logistics-order-info {
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="logistics-page">
+  <!-- 顶部栏 -->
+  <header class="logistics-header">
+    <div class="logistics-header-inner">
+      <div class="logistics-header-left">
+        <button class="logistics-back-btn" onclick="goBack()" title="返回主页">←</button>
+        <div>
+          <div class="logistics-title">🚚 物流跟踪</div>
+          <div class="logistics-subtitle">Logistics Tracking</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容 -->
+  <main class="logistics-main">
+    <!-- 搜索区域 -->
+    <div class="logistics-search-card">
+      <div class="logistics-search-row">
+        <div class="logistics-search-field">
+          <label>📦 生产订单编号</label>
+          <input
+            type="text"
+            id="orderSearchInput"
+            class="logistics-search-input"
+            placeholder="输入订单编号，如：PL-20260530-001"
+            onkeydown="if(event.key==='Enter')searchLogistics()"
+          />
+        </div>
+        <button class="logistics-search-btn" onclick="searchLogistics()">
+          🔍 查询物流
+        </button>
+      </div>
+      <div id="orderInfoArea" style="margin-top: 0.75rem;"></div>
+    </div>
+
+    <!-- 双栏内容 -->
+    <div class="logistics-content" id="logisticsContent" style="display:none;">
+      <!-- 左侧地图 -->
+      <div class="logistics-map-card">
+        <div class="logistics-map-header">
+          <h3>📍 实时物流地图</h3>
+          <span style="font-size:0.75rem;color:var(--text-muted);" id="mapUpdateTime"></span>
+        </div>
+        <div class="logistics-map-container" id="baiduMap"></div>
+        <!-- 坐标编辑 -->
+        <div class="logistics-coord-edit">
+          <div class="logistics-coord-field">
+            <label>纬度 (Lat)</label>
+            <input type="text" id="editLat" class="logistics-coord-input" placeholder="例：39.915" />
+          </div>
+          <div class="logistics-coord-field">
+            <label>经度 (Lng)</label>
+            <input type="text" id="editLng" class="logistics-coord-input" placeholder="例：116.404" />
+          </div>
+          <button class="logistics-coord-btn" onclick="updateLocation()">📍 更新位置</button>
+        </div>
+        <!-- 物流描述 -->
+        <div class="logistics-desc-field">
+          <div class="logistics-desc-row">
+            <input
+              type="text"
+              id="editDesc"
+              class="logistics-desc-input"
+              placeholder="添加物流描述，如：货物已到达中转仓库..."
+              maxlength="200"
+            />
+            <button class="logistics-coord-btn" onclick="addLogisticsNode()">✏️ 添加节点</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧时间轴 -->
+      <div class="logistics-timeline-card">
+        <div class="logistics-timeline-header">
+          <h3>📋 物流流转记录</h3>
+          <span style="font-size:0.6875rem;color:var(--text-muted);" id="timelineCount"></span>
+        </div>
+        <div class="logistics-timeline-body" id="timelineBody">
+          <div class="logistics-empty">
+            <div class="logistics-empty-icon">📭</div>
+            <p>暂无物流记录</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 初始空状态 -->
+    <div id="emptyState" style="text-align:center;padding:3rem 1rem;">
+      <div style="font-size:4rem;margin-bottom:1rem;">🚛</div>
+      <h3 style="color:var(--text-secondary);margin-bottom:0.5rem;">物流跟踪</h3>
+      <p style="color:var(--text-muted);font-size:0.875rem;">
+        输入生产订单编号，查询货物的实时物流信息
+      </p>
+    </div>
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="logisticsToast" class="logistics-toast" style="display:none;"></div>
+
+<script>
+// ==========================================
+// 物流数据存储层
+// ==========================================
+var LOGISTICS_STORAGE_KEY = 'steel_logistics_data';
+
+/**
+ * 获取所有物流数据
+ */
+function getLogisticsData() {
+  try {
+    var data = localStorage.getItem(LOGISTICS_STORAGE_KEY);
+    return data ? JSON.parse(data) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+/**
+ * 保存物流数据
+ */
+function saveLogisticsData(data) {
+  try {
+    localStorage.setItem(LOGISTICS_STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    showToast('保存失败，存储空间可能已满', 'error');
+  }
+}
+
+/**
+ * 获取某个订单的物流信息
+ */
+function getLogisticsByPlanNo(planNo) {
+  var all = getLogisticsData();
+  return all[planNo] || null;
+}
+
+/**
+ * 初始化订单物流（首次查询时创建）
+ */
+function initLogisticsForOrder(planNo, plan) {
+  var all = getLogisticsData();
+  if (all[planNo]) return all[planNo];
+
+  var now = new Date().toISOString();
+  var logistics = {
+    planNo: planNo,
+    // 起点（厂区坐标，默认北京某地，用户可改）
+    origin: { lat: 39.915, lng: 116.404, name: '厂区仓库' },
+    // 终点（默认上海某地）
+    destination: { lat: 31.230, lng: 121.474, name: '客户仓库' },
+    // 当前位置（初始在起点）
+    current: { lat: 39.915, lng: 116.404 },
+    // 物流节点
+    nodes: [
+      {
+        type: 'departed',
+        title: '订单已创建',
+        desc: '生产计划「' + (plan.planNo || planNo) + '」已录入系统',
+        location: '系统',
+        time: plan.createdAt || now,
+        lat: null,
+        lng: null
+      }
+    ],
+    updatedAt: now
+  };
+
+  all[planNo] = logistics;
+  saveLogisticsData(all);
+  return logistics;
+}
+
+// ==========================================
+// 生产数据读取（复用 storage.js）
+// ==========================================
+var STORAGE_KEY = 'steel_production_plans';
+
+function getPlans() {
+  try {
+    var data = localStorage.getItem(STORAGE_KEY);
+    if (!data) return [];
+    var plans = JSON.parse(data);
+    return Array.isArray(plans) ? plans : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function getPlanByPlanNo(planNo) {
+  var plans = getPlans();
+  return plans.find(function(p) { return p.planNo === planNo; }) || null;
+}
+
+// ==========================================
+// 百度地图
+// ==========================================
+var bmapInstance = null;
+var currentLogistics = null;
+var currentPlan = null;
+
+function initMap() {
+  if (bmapInstance) return;
+  var container = document.getElementById('baiduMap');
+  if (!container || container.offsetWidth === 0) return;
+
+  try {
+    // 检查百度地图API是否加载
+    if (typeof BMapGL === 'undefined') {
+      document.getElementById('baiduMap').innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:0.875rem;">' +
+        '📍 百度地图加载中...<br><small>如长时间未显示，请检查网络连接</small></div>';
+      return;
+    }
+
+    bmapInstance = new BMapGL.Map('baiduMap', {
+      enableMapClick: false
+    });
+
+    // 设置地图样式
+    bmapInstance.setMapStyleV2({ styleId: 'a0f35c9e8b9c0e9f6e8d6f4e2c0a8b6d' });
+
+    var point = new BMapGL.Point(116.404, 39.915);
+    bmapInstance.centerAndZoom(point, 12);
+    bmapInstance.enableScrollWheelZoom(true);
+    bmapInstance.setMapType(BMAP_EARTH_MAP);
+
+    // 添加比例尺和缩放控件
+    var scaleCtrl = new BMapGL.ScaleControl();
+    bmapInstance.addControl(scaleCtrl);
+    var zoomCtrl = new BMapGL.ZoomControl();
+    bmapInstance.addControl(zoomCtrl);
+
+    renderMapMarkers();
+  } catch (e) {
+    console.error('地图初始化失败:', e);
+    document.getElementById('baiduMap').innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:0.875rem;">' +
+      '⚠️ 地图加载失败，请刷新页面重试</div>';
+  }
+}
+
+/**
+ * 渲染地图标记（起点、终点、当前位置、路线）
+ */
+function renderMapMarkers() {
+  if (!bmapInstance || !currentLogistics) return;
+  bmapInstance.clearOverlays();
+
+  var origin = currentLogistics.origin;
+  var dest = currentLogistics.destination;
+  var current = currentLogistics.current;
+
+  // 起点标记（厂区）
+  if (origin && origin.lat && origin.lng) {
+    var originPt = new BMapGL.Point(origin.lng, origin.lat);
+    var originMarker = new BMapGL.Marker(originPt);
+    var originLabel = new BMapGL.Label('🏭 ' + (origin.name || '厂区'), {
+      position: originPt,
+      offset: new BMapGL.Size(20, -10)
+    });
+    originLabel.setStyle({
+      background: 'rgba(26,35,50,0.9)',
+      color: '#fff',
+      padding: '4px 10px',
+      borderRadius: '6px',
+      fontSize: '12px',
+      fontWeight: '600',
+      border: 'none',
+      whiteSpace: 'nowrap'
+    });
+    bmapInstance.addOverlay(originMarker);
+    bmapInstance.addOverlay(originLabel);
+  }
+
+  // 终点标记（仓库）
+  if (dest && dest.lat && dest.lng) {
+    var destPt = new BMapGL.Point(dest.lng, dest.lat);
+    var destMarker = new BMapGL.Marker(destPt);
+    var destLabel = new BMapGL.Label('📦 ' + (dest.name || '目的地'), {
+      position: destPt,
+      offset: new BMapGL.Size(20, -10)
+    });
+    destLabel.setStyle({
+      background: 'rgba(16,185,129,0.9)',
+      color: '#fff',
+      padding: '4px 10px',
+      borderRadius: '6px',
+      fontSize: '12px',
+      fontWeight: '600',
+      border: 'none',
+      whiteSpace: 'nowrap'
+    });
+    bmapInstance.addOverlay(destMarker);
+    bmapInstance.addOverlay(destLabel);
+  }
+
+  // 当前位置（小车图标）
+  if (current && current.lat && current.lng) {
+    var currentPt = new BMapGL.Point(current.lng, current.lat);
+    var currentMarker = new BMapGL.Marker(currentPt);
+    var currentLabel = new BMapGL.Label('🚛 当前位置', {
+      position: currentPt,
+      offset: new BMapGL.Size(25, -25)
+    });
+    currentLabel.setStyle({
+      background: 'rgba(37,99,235,0.95)',
+      color: '#fff',
+      padding: '5px 12px',
+      borderRadius: '8px',
+      fontSize: '13px',
+      fontWeight: '700',
+      border: '2px solid #fff',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+      whiteSpace: 'nowrap',
+      animation: 'none'
+    });
+    bmapInstance.addOverlay(currentMarker);
+    bmapInstance.addOverlay(currentLabel);
+
+    // 添加脉动圆环效果
+    var circle = new BMapGL.Circle(currentPt, 500, {
+      strokeColor: '#2563eb',
+      strokeWeight: 2,
+      strokeOpacity: 0.3,
+      fillColor: '#2563eb',
+      fillOpacity: 0.08
+    });
+    bmapInstance.addOverlay(circle);
+  }
+
+  // 绘制路线（起点→当前位置→终点）
+  if (origin && origin.lat && origin.lng && dest && dest.lat && dest.lng) {
+    var points = [];
+    points.push(new BMapGL.Point(origin.lng, origin.lat));
+    if (current && current.lat && current.lng) {
+      points.push(new BMapGL.Point(current.lng, current.lat));
+    }
+    points.push(new BMapGL.Point(dest.lng, dest.lat));
+
+    if (points.length >= 2) {
+      var polyline = new BMapGL.Polyline(points, {
+        strokeColor: '#2563eb',
+        strokeWeight: 3,
+        strokeOpacity: 0.6,
+        strokeStyle: 'dashed'
+      });
+      bmapInstance.addOverlay(polyline);
+    }
+  }
+
+  // 自适应视野
+  try {
+    var allPts = [];
+    if (origin && origin.lat && origin.lng) allPts.push(new BMapGL.Point(origin.lng, origin.lat));
+    if (dest && dest.lat && dest.lng) allPts.push(new BMapGL.Point(dest.lng, dest.lat));
+    if (current && current.lat && current.lng) allPts.push(new BMapGL.Point(current.lng, current.lat));
+
+    if (allPts.length >= 2) {
+      bmapInstance.setViewport(allPts, { margins: [40, 40, 40, 40] });
+    } else if (allPts.length === 1) {
+      bmapInstance.centerAndZoom(allPts[0], 14);
+    }
+  } catch (e) {
+    // 忽略视野计算错误
+  }
+}
+
+// ==========================================
+// 时间轴渲染
+// ==========================================
+function renderTimeline() {
+  var body = document.getElementById('timelineBody');
+  var countEl = document.getElementById('timelineCount');
+  if (!body || !currentLogistics) return;
+
+  var nodes = currentLogistics.nodes || [];
+  countEl.textContent = '共 ' + nodes.length + ' 条记录';
+
+  if (nodes.length === 0) {
+    body.innerHTML = '<div class="logistics-empty"><div class="logistics-empty-icon">📭</div><p>暂无物流记录</p></div>';
+    return;
+  }
+
+  // 倒序显示（最新在前）
+  var reversed = nodes.slice().reverse();
+
+  var html = '<div class="logistics-timeline">';
+  reversed.forEach(function(node, idx) {
+    var timeStr = node.time ? node.time.slice(0, 19).replace('T', ' ') : '';
+    var dotClass = 'logistics-timeline-dot ' + (node.type || 'departed');
+    var typeIcon = getNodeIcon(node.type);
+
+    html += '<div class="logistics-timeline-item">';
+    html += '<div class="' + dotClass + '"></div>';
+    html += '<div class="logistics-timeline-time">' + timeStr + '</div>';
+    html += '<div class="logistics-timeline-title">' + typeIcon + ' ' + escapeHtml(node.title || '') + '</div>';
+    if (node.desc) {
+      html += '<div class="logistics-timeline-desc">' + escapeHtml(node.desc) + '</div>';
+    }
+    if (node.location) {
+      html += '<div class="logistics-timeline-location">📍 ' + escapeHtml(node.location) + '</div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+
+  body.innerHTML = html;
+}
+
+function getNodeIcon(type) {
+  var icons = {
+    'departed': '🚚',
+    'transit': '🔄',
+    'arrived': '✅',
+    'delayed': '⚠️',
+    'manual': '📝'
+  };
+  return icons[type] || '📌';
+}
+
+// ==========================================
+// 订单信息展示
+// ==========================================
+function showOrderInfo(plan) {
+  var area = document.getElementById('orderInfoArea');
+  if (!plan) {
+    area.innerHTML = '';
+    return;
+  }
+
+  var settleLabel = getSettleLabel(plan.settleStatus || 'unsettled');
+  var settleColor = plan.settleStatus === 'settled' ? '#10b981' :
+                    plan.settleStatus === 'partial' ? '#f59e0b' : '#ef4444';
+  var isSettled = plan.settleStatus === 'settled';
+
+  area.innerHTML =
+    '<div class="logistics-order-info">' +
+    '<span>📦 <strong>' + escapeHtml(plan.steelType || '-') + '</strong></span>' +
+    '<span>规格: <strong>' + escapeHtml(plan.specification || '-') + '</strong></span>' +
+    '<span>数量: <strong>' + (plan.quantity || 0) + ' ' + escapeHtml(plan.unit || '吨') + '</strong></span>' +
+    '<span>客户: <strong>' + escapeHtml(plan.customer || '-') + '</strong></span>' +
+    '<span>结算: <strong style="color:' + settleColor + '">' + settleLabel + '</strong></span>' +
+    (isSettled ? '' : '<span class="settle-warning">⚠️ 未结算，无法修改物流</span>') +
+    '</div>';
+}
+
+function getSettleLabel(status) {
+  var map = { unsettled: '未结算', partial: '部分结算', settled: '已结算' };
+  return map[status] || '未结算';
+}
+
+// ==========================================
+// 核心功能
+// ==========================================
+
+/**
+ * 查询物流
+ */
+function searchLogistics() {
+  var input = document.getElementById('orderSearchInput');
+  var planNo = (input.value || '').trim();
+
+  if (!planNo) {
+    showToast('请输入订单编号', 'warning');
+    return;
+  }
+
+  // 查找订单
+  var plan = getPlanByPlanNo(planNo);
+  if (!plan) {
+    showToast('未找到订单「' + planNo + '」，请检查编号是否正确', 'error');
+    document.getElementById('logisticsContent').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'block';
+    return;
+  }
+
+  currentPlan = plan;
+
+  // 获取或创建物流数据
+  var logistics = getLogisticsByPlanNo(planNo);
+  if (!logistics) {
+    logistics = initLogisticsForOrder(planNo, plan);
+  }
+
+  currentLogistics = logistics;
+
+  // 显示内容区
+  document.getElementById('logisticsContent').style.display = '';
+  document.getElementById('emptyState').style.display = 'none';
+
+  // 显示订单信息
+  showOrderInfo(plan);
+
+  // 更新地图时间
+  document.getElementById('mapUpdateTime').textContent =
+    '更新于 ' + (logistics.updatedAt ? logistics.updatedAt.slice(0, 19).replace('T', ' ') : '-');
+
+  // 填充坐标编辑框
+  document.getElementById('editLat').value = logistics.current.lat || '';
+  document.getElementById('editLng').value = logistics.current.lng || '';
+
+  // 初始化地图
+  setTimeout(function() {
+    initMap();
+  }, 200);
+
+  // 渲染时间轴
+  renderTimeline();
+}
+
+/**
+ * 更新货物位置
+ */
+function updateLocation() {
+  if (!currentLogistics || !currentPlan) {
+    showToast('请先查询订单物流', 'warning');
+    return;
+  }
+
+  // 检查结算状态
+  if (currentPlan.settleStatus !== 'settled') {
+    showToast('订单尚未完成财务结算，无法修改物流数据', 'warning');
+    return;
+  }
+
+  var latStr = document.getElementById('editLat').value.trim();
+  var lngStr = document.getElementById('editLng').value.trim();
+
+  if (!latStr || !lngStr) {
+    showToast('请输入完整的经纬度坐标', 'warning');
+    return;
+  }
+
+  var lat = parseFloat(latStr);
+  var lng = parseFloat(lngStr);
+
+  if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    showToast('经纬度格式不正确，请输入有效坐标', 'error');
+    return;
+  }
+
+  // 更新当前位置
+  currentLogistics.current.lat = lat;
+  currentLogistics.current.lng = lng;
+  currentLogistics.updatedAt = new Date().toISOString();
+
+  // 自动添加物流节点
+  currentLogistics.nodes.push({
+    type: 'manual',
+    title: '位置更新',
+    desc: '手动更新货物位置至 (' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ')',
+    location: lat.toFixed(4) + ', ' + lng.toFixed(4),
+    time: currentLogistics.updatedAt,
+    lat: lat,
+    lng: lng
+  });
+
+  // 保存
+  var all = getLogisticsData();
+  all[currentLogistics.planNo] = currentLogistics;
+  saveLogisticsData(all);
+
+  // 更新UI
+  document.getElementById('mapUpdateTime').textContent =
+    '更新于 ' + currentLogistics.updatedAt.slice(0, 19).replace('T', ' ');
+  renderMapMarkers();
+  renderTimeline();
+
+  showToast('✅ 货物位置已更新', 'success');
+}
+
+/**
+ * 添加物流描述节点
+ */
+function addLogisticsNode() {
+  if (!currentLogistics || !currentPlan) {
+    showToast('请先查询订单物流', 'warning');
+    return;
+  }
+
+  // 检查结算状态
+  if (currentPlan.settleStatus !== 'settled') {
+    showToast('订单尚未完成财务结算，无法修改物流数据', 'warning');
+    return;
+  }
+
+  var desc = document.getElementById('editDesc').value.trim();
+  if (!desc) {
+    showToast('请输入物流描述', 'warning');
+    return;
+  }
+
+  var now = new Date().toISOString();
+  var lat = currentLogistics.current.lat;
+  var lng = currentLogistics.current.lng;
+
+  // 智能判断节点类型
+  var nodeType = 'manual';
+  var lowerDesc = desc.toLowerCase();
+  if (lowerDesc.indexOf('到达') !== -1 || lowerDesc.indexOf('抵达') !== -1 || lowerDesc.indexOf('签收') !== -1) {
+    nodeType = 'arrived';
+  } else if (lowerDesc.indexOf('中转') !== -1 || lowerDesc.indexOf('运输') !== -1 || lowerDesc.indexOf('途中') !== -1) {
+    nodeType = 'transit';
+  } else if (lowerDesc.indexOf('延误') !== -1 || lowerDesc.indexOf('延迟') !== -1 || lowerDesc.indexOf('延期') !== -1) {
+    nodeType = 'delayed';
+  } else if (lowerDesc.indexOf('出发') !== -1 || lowerDesc.indexOf('发车') !== -1 || lowerDesc.indexOf('出厂') !== -1) {
+    nodeType = 'departed';
+  }
+
+  currentLogistics.nodes.push({
+    type: nodeType,
+    title: getNodeTypeLabel(nodeType),
+    desc: desc,
+    location: lat && lng ? (lat.toFixed(4) + ', ' + lng.toFixed(4)) : '未知位置',
+    time: now,
+    lat: lat,
+    lng: lng
+  });
+
+  currentLogistics.updatedAt = now;
+
+  // 保存
+  var all = getLogisticsData();
+  all[currentLogistics.planNo] = currentLogistics;
+  saveLogisticsData(all);
+
+  // 清空输入
+  document.getElementById('editDesc').value = '';
+
+  // 更新UI
+  renderTimeline();
+  showToast('✅ 物流节点已添加', 'success');
+}
+
+function getNodeTypeLabel(type) {
+  var labels = {
+    'departed': '🚚 已出发',
+    'transit': '🔄 运输中',
+    'arrived': '✅ 已到达',
+    'delayed': '⚠️ 延迟',
+    'manual': '📝 手动记录'
+  };
+  return labels[type] || '📝 手动记录';
+}
+
+// ==========================================
+// 工具函数
+// ==========================================
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function showToast(msg, type) {
+  var toast = document.getElementById('logisticsToast');
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.className = 'logistics-toast ' + (type || 'success');
+  toast.style.display = 'block';
+
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(function() {
+    toast.style.display = 'none';
+  }, 2500);
+}
+
+function goBack() {
+  window.location.href = 'index.html';
+}
+
+// ==========================================
+// 页面初始化
+// ==========================================
+(function init() {
+  // 监听窗口大小变化，重新渲染地图
+  window.addEventListener('resize', function() {
+    if (bmapInstance && currentLogistics) {
+      setTimeout(function() { renderMapMarkers(); }, 300);
+    }
+  });
+
+  // 如果URL带有参数，自动查询
+  var urlParams = new URLSearchParams(window.location.search);
+  var autoPlanNo = urlParams.get('planNo');
+  if (autoPlanNo) {
+    document.getElementById('orderSearchInput').value = autoPlanNo;
+    setTimeout(function() { searchLogistics(); }, 500);
+  }
+})();
+</script>
+
+</body>
+</html>

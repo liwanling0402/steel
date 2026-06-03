@@ -1,7 +1,8 @@
-const CACHE_NAME = 'steel-system-cache-v1';
+const CACHE_NAME = 'steel-system-cache-v2';
 const CACHE_FILES = [
     './',
-    './index.html'
+    './index.html',
+    './logistics.html'
 ];
 
 // 安装缓存核心文件

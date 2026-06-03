@@ -5,7 +5,7 @@
    - Cache First + 后台更新策略
    ========================================== */
 
-const CACHE_NAME = 'steel-pwa-v5-20260530';
+const CACHE_NAME = 'steel-pwa-v5-20260603';
 
 // 自动检测部署路径（本地 / 或 GitHub Pages /steel/）
 const BASE = self.location.pathname.replace(/\/sw\.js$/, '');
@@ -13,6 +13,7 @@ const ASSETS = [
   BASE + '/',
   BASE + '/index.html',
   BASE + '/index-app.html',
+  BASE + '/logistics.html',
   BASE + '/css/style.css',
   BASE + '/js/storage.js',
   BASE + '/js/production-form.js',
