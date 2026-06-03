@@ -7,17 +7,25 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#1a2332">
-  <title>物流跟踪 - Steel 钢材管理系统</title>
+  <meta name="apple-mobile-web-app-title" content="物流跟踪">
+  <title>🚚 物流跟进 - Steel 钢材管理系统</title>
 
+  <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+
+  <!-- 核心样式 -->
   <link rel="stylesheet" href="css/style.css">
 
-  <!-- Leaflet + OpenStreetMap（完全开源免费，无需密钥） -->
+  <!-- Leaflet + OpenStreetMap（完全免费，无需 AK） -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+  </script>
 
   <style>
-    /* ========== 物流页面专属样式 ========== */
+    /* ==========================================
+       物流页面专属样式 — 与主站风格统一
+       ========================================== */
     :root {
       --logistics-primary: #2563eb;
       --logistics-transit: #f59e0b;
@@ -30,14 +38,14 @@
       min-height: 100vh;
       min-height: -webkit-fill-available;
       background: var(--logistics-bg);
-      padding-bottom: calc(20px + var(--safe-bottom));
+      padding-bottom: calc(20px + var(--safe-bottom, 0px));
     }
 
-    /* 顶部标题栏 */
+    /* 顶部标题栏 — 与主站 header 风格完全一致 */
     .logistics-header {
       background: linear-gradient(135deg, #1a2332 0%, #2d4054 100%);
       padding: 1rem 1.25rem;
-      padding-top: calc(1rem + var(--safe-top));
+      padding-top: calc(1rem + var(--safe-top, 0px));
       color: #fff;
       position: sticky;
       top: 0;
@@ -70,16 +78,12 @@
       color: #fff;
       font-size: 1.25rem;
       cursor: pointer;
-      transition: all var(--transition-fast);
+      transition: all 0.15s;
       border: none;
+      text-decoration: none;
     }
-
-    .logistics-back-btn:hover {
-      background: rgba(255,255,255,0.2);
-    }
-    .logistics-back-btn:active {
-      transform: scale(0.95);
-    }
+    .logistics-back-btn:hover { background: rgba(255,255,255,0.2); }
+    .logistics-back-btn:active { transform: scale(0.95); }
 
     .logistics-title {
       font-size: 1.125rem;
@@ -87,7 +91,6 @@
       color: #fff;
       letter-spacing: 0.02em;
     }
-
     .logistics-subtitle {
       font-size: 0.6875rem;
       color: rgba(255,255,255,0.55);
@@ -102,13 +105,13 @@
       padding: 1rem;
     }
 
-    /* 搜索区域 */
+    /* 搜索卡片 */
     .logistics-search-card {
-      background: var(--bg-card-solid);
-      border-radius: var(--radius-lg);
+      background: #fff;
+      border-radius: 20px;
       padding: 1.25rem;
       margin-bottom: 1rem;
-      box-shadow: var(--shadow-card);
+      box-shadow: 0 2px 8px rgba(15,23,32,0.06), 0 0 0 1px rgba(15,23,32,0.04);
       border: 1px solid rgba(180,195,210,0.15);
     }
 
@@ -126,11 +129,10 @@
       flex-direction: column;
       gap: 0.375rem;
     }
-
     .logistics-search-field label {
       font-size: 0.75rem;
       font-weight: 600;
-      color: var(--text-secondary);
+      color: #4a5568;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
@@ -138,61 +140,86 @@
     .logistics-search-input {
       padding: 0.75rem 1rem;
       border: 1.5px solid rgba(180,195,210,0.4);
-      border-radius: var(--radius-xs);
-      background: var(--bg-input);
-      font-size: 0.9375rem;
-      color: var(--text-primary);
+      border-radius: 8px;
+      background: #f7f8fa;
+      font-size: 1rem;
+      color: #1e2533;
       outline: none;
-      transition: all var(--transition-fast);
+      transition: all 0.15s;
       min-height: 46px;
+      width: 100%;
+      box-sizing: border-box;
     }
-
     .logistics-search-input:focus {
-      border-color: var(--color-primary);
+      border-color: #2563eb;
       box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
     }
 
     .logistics-search-btn {
       padding: 0.75rem 1.5rem;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
       color: #fff;
       border: none;
-      border-radius: var(--radius-xs);
+      border-radius: 8px;
       font-weight: 700;
       font-size: 0.9375rem;
       cursor: pointer;
-      transition: all var(--transition-fast);
+      transition: all 0.15s;
       white-space: nowrap;
       min-height: 46px;
       display: flex;
       align-items: center;
       gap: 0.375rem;
+      box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+    }
+    .logistics-search-btn:hover { box-shadow: 0 4px 14px rgba(37,99,235,0.35); transform: translateY(-1px); }
+    .logistics-search-btn:active { transform: scale(0.97); }
+    .logistics-search-btn:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; transform: none; }
+
+    /* 订单信息卡 */
+    .logistics-order-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      padding: 0.75rem 1rem;
+      background: #f9fafb;
+      border-radius: 8px;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: #4a5568;
+    }
+    .logistics-order-info strong { color: #1e2533; }
+
+    /* 结算锁定警告 */
+    .settle-lock-warning {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      color: #ef4444;
+      font-weight: 600;
+      font-size: 0.75rem;
+      padding: 0.375rem 0.625rem;
+      background: #fef2f2;
+      border-radius: 6px;
+      border: 1px solid #fecaca;
+      margin-top: 0.625rem;
     }
 
-    .logistics-search-btn:hover {
-      background: linear-gradient(135deg, #1d4ed8, #1e40af);
-      box-shadow: var(--shadow-md);
-    }
-    .logistics-search-btn:active {
-      transform: scale(0.97);
-    }
-
-    /* 内容区双栏 */
+    /* 双栏布局 */
     .logistics-content {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1rem;
     }
 
-    /* 左侧地图区 */
+    /* 地图卡片 */
     .logistics-map-card {
-      background: var(--bg-card-solid);
-      border-radius: var(--radius-lg);
+      background: #fff;
+      border-radius: 20px;
       overflow: hidden;
-      box-shadow: var(--shadow-card);
+      box-shadow: 0 2px 8px rgba(15,23,32,0.06), 0 0 0 1px rgba(15,23,32,0.04);
       border: 1px solid rgba(180,195,210,0.15);
     }
-
     .logistics-map-header {
       padding: 0.75rem 1rem;
       border-bottom: 1px solid #f3f4f6;
@@ -200,13 +227,7 @@
       align-items: center;
       justify-content: space-between;
     }
-
-    .logistics-map-header h3 {
-      font-size: 0.875rem;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
-
+    .logistics-map-header h3 { font-size: 0.875rem; font-weight: 700; color: #1e2533; }
     .logistics-map-container {
       width: 100%;
       height: 400px;
@@ -224,7 +245,6 @@
       flex-wrap: wrap;
       align-items: flex-end;
     }
-
     .logistics-coord-field {
       flex: 1;
       min-width: 100px;
@@ -232,52 +252,55 @@
       flex-direction: column;
       gap: 0.25rem;
     }
-
     .logistics-coord-field label {
       font-size: 0.65rem;
       font-weight: 600;
-      color: var(--text-muted);
+      color: #a0aec0;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
-
     .logistics-coord-input {
       padding: 0.5rem 0.625rem;
       border: 1.5px solid rgba(180,195,210,0.4);
       border-radius: 6px;
-      background: var(--bg-input);
-      font-size: 0.8125rem;
-      color: var(--text-primary);
+      background: #f7f8fa;
+      font-size: 0.9375rem;
+      color: #1e2533;
       outline: none;
       min-height: 38px;
       width: 100%;
+      box-sizing: border-box;
     }
-
     .logistics-coord-input:focus {
-      border-color: var(--color-primary);
+      border-color: #2563eb;
       box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+    .logistics-coord-input:disabled {
+      opacity: 0.5;
+      background: #e5e7eb;
+      cursor: not-allowed;
     }
 
     .logistics-coord-btn {
       padding: 0.5rem 1rem;
-      background: var(--color-primary);
+      background: #2563eb;
       color: #fff;
       border: none;
       border-radius: 6px;
       font-weight: 600;
       font-size: 0.8125rem;
       cursor: pointer;
-      transition: all var(--transition-fast);
+      transition: all 0.15s;
       min-height: 38px;
       white-space: nowrap;
     }
-
-    .logistics-coord-btn:hover {
-      background: var(--color-primary-dark);
-    }
-
-    .logistics-coord-btn:active {
-      transform: scale(0.97);
+    .logistics-coord-btn:hover { background: #1d4ed8; }
+    .logistics-coord-btn:active { transform: scale(0.97); }
+    .logistics-coord-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+      transform: none;
     }
 
     /* 物流描述输入 */
@@ -285,41 +308,43 @@
       padding: 0.75rem 1rem;
       border-top: 1px solid #f3f4f6;
     }
-
     .logistics-desc-row {
       display: flex;
       gap: 0.5rem;
       align-items: flex-end;
     }
-
     .logistics-desc-input {
       flex: 1;
       padding: 0.625rem 0.75rem;
       border: 1.5px solid rgba(180,195,210,0.4);
       border-radius: 6px;
-      background: var(--bg-input);
-      font-size: 0.875rem;
-      color: var(--text-primary);
+      background: #f7f8fa;
+      font-size: 0.9375rem;
+      color: #1e2533;
       outline: none;
       min-height: 40px;
+      box-sizing: border-box;
     }
-
     .logistics-desc-input:focus {
-      border-color: var(--color-primary);
+      border-color: #2563eb;
       box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
     }
+    .logistics-desc-input:disabled {
+      opacity: 0.5;
+      background: #e5e7eb;
+      cursor: not-allowed;
+    }
 
-    /* 右侧时间轴 */
+    /* 时间轴卡片 */
     .logistics-timeline-card {
-      background: var(--bg-card-solid);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-card);
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(15,23,32,0.06), 0 0 0 1px rgba(15,23,32,0.04);
       border: 1px solid rgba(180,195,210,0.15);
       display: flex;
       flex-direction: column;
       max-height: 600px;
     }
-
     .logistics-timeline-header {
       padding: 0.75rem 1rem;
       border-bottom: 1px solid #f3f4f6;
@@ -328,13 +353,7 @@
       justify-content: space-between;
       flex-shrink: 0;
     }
-
-    .logistics-timeline-header h3 {
-      font-size: 0.875rem;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
-
+    .logistics-timeline-header h3 { font-size: 0.875rem; font-weight: 700; color: #1e2533; }
     .logistics-timeline-body {
       flex: 1;
       overflow-y: auto;
@@ -346,7 +365,6 @@
       position: relative;
       padding-left: 1.75rem;
     }
-
     .logistics-timeline::before {
       content: '';
       position: absolute;
@@ -356,16 +374,11 @@
       width: 2px;
       background: linear-gradient(180deg, #2563eb 0%, #e5e7eb 100%);
     }
-
     .logistics-timeline-item {
       position: relative;
       padding-bottom: 1.25rem;
     }
-
-    .logistics-timeline-item:last-child {
-      padding-bottom: 0;
-    }
-
+    .logistics-timeline-item:last-child { padding-bottom: 0; }
     .logistics-timeline-dot {
       position: absolute;
       left: -1.45rem;
@@ -378,55 +391,31 @@
       box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
       z-index: 1;
     }
-
-    .logistics-timeline-dot.transit {
-      background: #f59e0b;
-      box-shadow: 0 0 0 3px rgba(245,158,11,0.2);
-    }
-
-    .logistics-timeline-dot.arrived {
-      background: #10b981;
-      box-shadow: 0 0 0 3px rgba(16,185,129,0.2);
-    }
-
-    .logistics-timeline-dot.departed {
-      background: #6366f1;
-      box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
-    }
-
-    .logistics-timeline-dot.delayed {
-      background: #ef4444;
-      box-shadow: 0 0 0 3px rgba(239,68,68,0.2);
-    }
-
-    .logistics-timeline-dot.manual {
-      background: #8b5cf6;
-      box-shadow: 0 0 0 3px rgba(139,92,246,0.2);
-    }
-
+    .logistics-timeline-dot.transit { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.2); }
+    .logistics-timeline-dot.arrived { background: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
+    .logistics-timeline-dot.departed { background: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
+    .logistics-timeline-dot.delayed { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.2); }
+    .logistics-timeline-dot.manual { background: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,0.2); }
     .logistics-timeline-time {
       font-size: 0.6875rem;
-      color: var(--text-muted);
+      color: #a0aec0;
       margin-bottom: 0.125rem;
       font-weight: 500;
     }
-
     .logistics-timeline-title {
       font-size: 0.875rem;
       font-weight: 600;
-      color: var(--text-primary);
+      color: #1e2533;
       margin-bottom: 0.125rem;
     }
-
     .logistics-timeline-desc {
       font-size: 0.75rem;
-      color: var(--text-secondary);
+      color: #4a5568;
       line-height: 1.5;
     }
-
     .logistics-timeline-location {
       font-size: 0.6875rem;
-      color: var(--text-tertiary);
+      color: #8896a8;
       margin-top: 0.125rem;
     }
 
@@ -434,19 +423,12 @@
     .logistics-empty {
       text-align: center;
       padding: 3rem 1rem;
-      color: var(--text-muted);
+      color: #a0aec0;
     }
+    .logistics-empty-icon { font-size: 3rem; margin-bottom: 0.75rem; }
+    .logistics-empty p { font-size: 0.875rem; }
 
-    .logistics-empty-icon {
-      font-size: 3rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .logistics-empty p {
-      font-size: 0.875rem;
-    }
-
-    /* Toast提示 */
+    /* Toast 提示 */
     .logistics-toast {
       position: fixed;
       top: 5rem;
@@ -454,126 +436,54 @@
       transform: translateX(-50%);
       z-index: 999;
       padding: 0.75rem 1.5rem;
-      border-radius: var(--radius-sm);
+      border-radius: 12px;
       font-weight: 600;
       font-size: 0.875rem;
-      box-shadow: var(--shadow-lg);
-      animation: toastIn 0.3s ease-out;
+      box-shadow: 0 8px 32px rgba(15,23,32,0.12), 0 4px 12px rgba(15,23,32,0.06);
+      animation: logisticsToastIn 0.3s ease-out;
       pointer-events: none;
     }
-
-    .logistics-toast.success {
-      background: #ecfdf5;
-      color: #065f46;
-      border: 1px solid #a7f3d0;
-    }
-
-    .logistics-toast.error {
-      background: #fef2f2;
-      color: #991b1b;
-      border: 1px solid #fecaca;
-    }
-
-    .logistics-toast.warning {
-      background: #fffbeb;
-      color: #92400e;
-      border: 1px solid #fde68a;
-    }
-
-    @keyframes toastIn {
+    .logistics-toast.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .logistics-toast.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .logistics-toast.warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+    .logistics-toast.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    @keyframes logisticsToastIn {
       from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
       to { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
 
-    /* 订单信息卡 */
-    .logistics-order-info {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem 1.5rem;
-      padding: 0.75rem 1rem;
-      background: #f9fafb;
-      border-radius: var(--radius-xs);
-      margin-bottom: 0.75rem;
-      font-size: 0.8125rem;
-      color: var(--text-secondary);
-    }
-
-    .logistics-order-info strong {
-      color: var(--text-primary);
-    }
-
-    .logistics-order-info .settle-warning {
-      color: #dc2626;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-    }
-
-    /* 响应式 */
+    /* 移动端响应式 */
     @media (max-width: 768px) {
-      .logistics-content {
-        grid-template-columns: 1fr;
-      }
-
-      .logistics-map-container {
-        height: 300px;
-      }
-
-      .logistics-search-row {
-        flex-direction: column;
-      }
-
-      .logistics-search-field {
-        min-width: 0;
-        width: 100%;
-      }
-
-      .logistics-search-btn {
-        width: 100%;
-        justify-content: center;
-      }
-
-      .logistics-coord-edit {
-        flex-direction: column;
-      }
-
-      .logistics-coord-field {
-        min-width: 0;
-      }
-
-      .logistics-timeline-card {
-        max-height: none;
-      }
-
-      .logistics-main {
-        padding: 0.75rem;
-      }
-
-      .logistics-order-info {
-        flex-direction: column;
-        gap: 0.25rem;
-      }
+      .logistics-content { grid-template-columns: 1fr; }
+      .logistics-map-container { height: 300px; }
+      .logistics-search-row { flex-direction: column; }
+      .logistics-search-field { min-width: 0; width: 100%; }
+      .logistics-search-btn { width: 100%; justify-content: center; }
+      .logistics-coord-edit { flex-direction: column; }
+      .logistics-coord-field { min-width: 0; }
+      .logistics-timeline-card { max-height: none; }
+      .logistics-main { padding: 0.75rem; }
+      .logistics-order-info { flex-direction: column; gap: 0.25rem; }
     }
   </style>
 </head>
 <body>
 
 <div class="logistics-page">
-  <!-- 顶部栏 -->
+  <!-- ========== 顶部导航栏 ========== -->
   <header class="logistics-header">
     <div class="logistics-header-inner">
       <div class="logistics-header-left">
-        <button class="logistics-back-btn" onclick="goBack()" title="返回主页">←</button>
+        <a href="index.html" class="logistics-back-btn" title="返回主页">←</a>
         <div>
-          <div class="logistics-title">🚚 物流跟踪</div>
+          <div class="logistics-title">🚚 物流跟进</div>
           <div class="logistics-subtitle">Logistics Tracking</div>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- 主内容 -->
+  <!-- ========== 主内容 ========== -->
   <main class="logistics-main">
     <!-- 搜索区域 -->
     <div class="logistics-search-card">
@@ -584,7 +494,7 @@
             type="text"
             id="orderSearchInput"
             class="logistics-search-input"
-            placeholder="输入订单编号，如：PL-20260530-001"
+            placeholder="输入订单编号，如：SC20260603001"
             onkeydown="if(event.key==='Enter')searchLogistics()"
           />
         </div>
@@ -592,29 +502,29 @@
           🔍 查询物流
         </button>
       </div>
-      <div id="orderInfoArea" style="margin-top: 0.75rem;"></div>
+      <div id="orderInfoArea" style="margin-top:0;"></div>
     </div>
 
-    <!-- 双栏内容 -->
+    <!-- 双栏内容区 -->
     <div class="logistics-content" id="logisticsContent" style="display:none;">
       <!-- 左侧地图 -->
       <div class="logistics-map-card">
         <div class="logistics-map-header">
           <h3>📍 实时物流地图</h3>
-          <span style="font-size:0.75rem;color:var(--text-muted);" id="mapUpdateTime"></span>
+          <span style="font-size:0.75rem;color:#a0aec0;" id="mapUpdateTime"></span>
         </div>
         <div class="logistics-map-container" id="baiduMap"></div>
         <!-- 坐标编辑 -->
         <div class="logistics-coord-edit">
           <div class="logistics-coord-field">
-            <label>纬度 (Lat)</label>
+            <label>纬度 (Latitude)</label>
             <input type="text" id="editLat" class="logistics-coord-input" placeholder="例：39.915" />
           </div>
           <div class="logistics-coord-field">
-            <label>经度 (Lng)</label>
+            <label>经度 (Longitude)</label>
             <input type="text" id="editLng" class="logistics-coord-input" placeholder="例：116.404" />
           </div>
-          <button class="logistics-coord-btn" onclick="updateLocation()">📍 更新位置</button>
+          <button class="logistics-coord-btn" id="updateLocBtn" onclick="updateLocation()">📍 更新位置</button>
         </div>
         <!-- 物流描述 -->
         <div class="logistics-desc-field">
@@ -626,7 +536,7 @@
               placeholder="添加物流描述，如：货物已到达中转仓库..."
               maxlength="200"
             />
-            <button class="logistics-coord-btn" onclick="addLogisticsNode()">✏️ 添加节点</button>
+            <button class="logistics-coord-btn" id="addNodeBtn" onclick="addLogisticsNode()">✏️ 添加节点</button>
           </div>
         </div>
       </div>
@@ -635,7 +545,7 @@
       <div class="logistics-timeline-card">
         <div class="logistics-timeline-header">
           <h3>📋 物流流转记录</h3>
-          <span style="font-size:0.6875rem;color:var(--text-muted);" id="timelineCount"></span>
+          <span style="font-size:0.6875rem;color:#a0aec0;" id="timelineCount"></span>
         </div>
         <div class="logistics-timeline-body" id="timelineBody">
           <div class="logistics-empty">
@@ -649,8 +559,8 @@
     <!-- 初始空状态 -->
     <div id="emptyState" style="text-align:center;padding:3rem 1rem;">
       <div style="font-size:4rem;margin-bottom:1rem;">🚛</div>
-      <h3 style="color:var(--text-secondary);margin-bottom:0.5rem;">物流跟踪</h3>
-      <p style="color:var(--text-muted);font-size:0.875rem;">
+      <h3 style="color:#4a5568;margin-bottom:0.5rem;">物流跟进</h3>
+      <p style="color:#a0aec0;font-size:0.875rem;">
         输入生产订单编号，查询货物的实时物流信息
       </p>
     </div>
@@ -666,21 +576,13 @@
 // ==========================================
 var LOGISTICS_STORAGE_KEY = 'steel_logistics_data';
 
-/**
- * 获取所有物流数据
- */
 function getLogisticsData() {
   try {
     var data = localStorage.getItem(LOGISTICS_STORAGE_KEY);
     return data ? JSON.parse(data) : {};
-  } catch (e) {
-    return {};
-  }
+  } catch (e) { return {}; }
 }
 
-/**
- * 保存物流数据
- */
 function saveLogisticsData(data) {
   try {
     localStorage.setItem(LOGISTICS_STORAGE_KEY, JSON.stringify(data));
@@ -689,9 +591,6 @@ function saveLogisticsData(data) {
   }
 }
 
-/**
- * 获取某个订单的物流信息
- */
 function getLogisticsByPlanNo(planNo) {
   var all = getLogisticsData();
   return all[planNo] || null;
@@ -707,18 +606,14 @@ function initLogisticsForOrder(planNo, plan) {
   var now = new Date().toISOString();
   var logistics = {
     planNo: planNo,
-    // 起点（厂区坐标，默认北京某地，用户可改）
-    origin: { lat: 39.915, lng: 116.404, name: '厂区仓库' },
-    // 终点（默认上海某地）
-    destination: { lat: 31.230, lng: 121.474, name: '客户仓库' },
-    // 当前位置（初始在起点）
-    current: { lat: 39.915, lng: 116.404 },
-    // 物流节点
+    origin: { lat: 39.634, lng: 118.180, name: '唐山钢铁厂区仓库' },
+    destination: { lat: 31.204, lng: 121.589, name: '客户指定仓库' },
+    current: { lat: 39.634, lng: 118.180 },
     nodes: [
       {
         type: 'departed',
         title: '订单已创建',
-        desc: '生产计划「' + (plan.planNo || planNo) + '」已录入系统',
+        desc: '生产计划「' + (plan.planNo || planNo) + '」已录入系统，等待物流调度',
         location: '系统',
         time: plan.createdAt || now,
         lat: null,
@@ -734,7 +629,7 @@ function initLogisticsForOrder(planNo, plan) {
 }
 
 // ==========================================
-// 生产数据读取（复用 storage.js）
+// 生产数据读取（复用 storage.js 数据格式）
 // ==========================================
 var STORAGE_KEY = 'steel_production_plans';
 
@@ -744,9 +639,7 @@ function getPlans() {
     if (!data) return [];
     var plans = JSON.parse(data);
     return Array.isArray(plans) ? plans : [];
-  } catch (e) {
-    return [];
-  }
+  } catch (e) { return []; }
 }
 
 function getPlanByPlanNo(planNo) {
@@ -755,66 +648,56 @@ function getPlanByPlanNo(planNo) {
 }
 
 // ==========================================
-// Leaflet + OpenStreetMap（开源免费，永不失效）
+// Leaflet + OpenStreetMap（免费开源，无需密钥）
 // ==========================================
 var mapInstance = null;
 var currentLogistics = null;
 var currentPlan = null;
-var mapLayers = [];       // 存放当前图层引用
-var MAP_INIT_TIMEOUT = 8000; // 8秒超时
-var mapInitTimer = null;
+var mapLayers = [];
 
 // 自定义图标工厂
 var iconFactory = {
   origin: L.divIcon({
     className: '',
     html: '<div style="background:#1a2332;color:#fff;width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">🏭</div>',
-    iconSize: [28, 28],
-    iconAnchor: [14, 14]
+    iconSize: [28, 28], iconAnchor: [14, 14]
   }),
   dest: L.divIcon({
     className: '',
     html: '<div style="background:#10b981;color:#fff;width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">📦</div>',
-    iconSize: [28, 28],
-    iconAnchor: [14, 14]
+    iconSize: [28, 28], iconAnchor: [14, 14]
   }),
   current: L.divIcon({
     className: '',
     html: '<div style="background:#2563eb;color:#fff;width:36px;height:36px;border-radius:50%;text-align:center;line-height:36px;font-size:20px;border:3px solid #fff;box-shadow:0 3px 12px rgba(37,99,235,0.5);">🚛</div>',
-    iconSize: [36, 36],
-    iconAnchor: [18, 18]
+    iconSize: [36, 36], iconAnchor: [18, 18]
   })
 };
 
 function initMap() {
   if (mapInstance) return;
-
   var container = document.getElementById('baiduMap');
   if (!container || container.offsetWidth === 0) return;
-
-  // 防止重复初始化
   if (container._mapInitializing) return;
   container._mapInitializing = true;
 
   try {
-    // 检查 Leaflet 是否加载
     if (typeof L === 'undefined') {
       container.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:0.875rem;">' +
+        '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:0.875rem;text-align:center;">' +
         '📍 地图库加载中...<br><small>请检查网络连接后刷新页面</small></div>';
       container._mapInitializing = false;
       return;
     }
 
     mapInstance = L.map('baiduMap', {
-      center: [39.915, 116.404],
-      zoom: 7,
+      center: [39.634, 118.180],
+      zoom: 6,
       zoomControl: true,
       attributionControl: false,
       scrollWheelZoom: true
     });
 
-    // 使用 OpenStreetMap 瓦片（免费开源，无需密钥）
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       minZoom: 3
@@ -825,14 +708,15 @@ function initMap() {
   } catch (e) {
     console.error('地图初始化失败:', e);
     container.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:0.875rem;">' +
+      '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:0.875rem;text-align:center;">' +
       '⚠️ 地图加载失败<br><small>请检查网络连接后刷新页面</small></div>';
     container._mapInitializing = false;
   }
 }
 
 /**
- * 渲染地图标记（起点、终点、当前位置、路线）
+ * 渲染地图标记（起点、终点、小车、路线）
+ * 仿淘宝物流地图风格
  */
 function renderMapMarkers() {
   if (!mapInstance || !currentLogistics) return;
@@ -845,47 +729,42 @@ function renderMapMarkers() {
   var dest = currentLogistics.destination;
   var current = currentLogistics.current;
 
-  // 起点标记（厂区）
+  // 起点标记
   if (origin && origin.lat && origin.lng) {
     var originMarker = L.marker([origin.lat, origin.lng], { icon: iconFactory.origin }).addTo(mapInstance);
     var originLabel = L.marker([origin.lat, origin.lng], {
       icon: L.divIcon({
         className: '',
         html: '<div style="background:rgba(26,35,50,0.9);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;">🏭 ' + (origin.name || '厂区') + '</div>',
-        iconSize: [120, 24],
-        iconAnchor: [60, -10]
+        iconSize: [140, 24], iconAnchor: [70, -10]
       })
     }).addTo(mapInstance);
     mapLayers.push(originMarker, originLabel);
   }
 
-  // 终点标记（仓库）
+  // 终点标记
   if (dest && dest.lat && dest.lng) {
     var destMarker = L.marker([dest.lat, dest.lng], { icon: iconFactory.dest }).addTo(mapInstance);
     var destLabel = L.marker([dest.lat, dest.lng], {
       icon: L.divIcon({
         className: '',
         html: '<div style="background:rgba(16,185,129,0.9);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;">📦 ' + (dest.name || '目的地') + '</div>',
-        iconSize: [120, 24],
-        iconAnchor: [60, -10]
+        iconSize: [140, 24], iconAnchor: [70, -10]
       })
     }).addTo(mapInstance);
     mapLayers.push(destMarker, destLabel);
   }
 
-  // 当前位置（小车图标 + 脉动圆环）
+  // 当前位置小车标记 + 脉动圆环
   if (current && current.lat && current.lng) {
     var currentMarker = L.marker([current.lat, current.lng], { icon: iconFactory.current }).addTo(mapInstance);
     var currentLabel = L.marker([current.lat, current.lng], {
       icon: L.divIcon({
         className: '',
         html: '<div style="background:rgba(37,99,235,0.95);color:#fff;padding:5px 12px;border-radius:8px;font-size:13px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);white-space:nowrap;">🚛 当前位置</div>',
-        iconSize: [110, 30],
-        iconAnchor: [55, -18]
+        iconSize: [110, 30], iconAnchor: [55, -18]
       })
     }).addTo(mapInstance);
-
-    // 脉动圆环
     var circle = L.circle([current.lat, current.lng], {
       radius: 30000,
       color: '#2563eb',
@@ -894,11 +773,10 @@ function renderMapMarkers() {
       fillColor: '#2563eb',
       fillOpacity: 0.08
     }).addTo(mapInstance);
-
     mapLayers.push(currentMarker, currentLabel, circle);
   }
 
-  // 绘制虚线路线
+  // 绘制虚线路线（仿淘宝风格）
   if (origin && origin.lat && origin.lng && dest && dest.lat && dest.lng) {
     var latlngs = [[origin.lat, origin.lng]];
     if (current && current.lat && current.lng) {
@@ -924,7 +802,6 @@ function renderMapMarkers() {
     if (origin && origin.lat && origin.lng) bounds.push([origin.lat, origin.lng]);
     if (dest && dest.lat && dest.lng) bounds.push([dest.lat, dest.lng]);
     if (current && current.lat && current.lng) bounds.push([current.lat, current.lng]);
-
     if (bounds.length >= 2) {
       mapInstance.fitBounds(bounds, { padding: [40, 40] });
     } else if (bounds.length === 1) {
@@ -951,10 +828,10 @@ function renderTimeline() {
 
   // 倒序显示（最新在前）
   var reversed = nodes.slice().reverse();
-
   var html = '<div class="logistics-timeline">';
+
   reversed.forEach(function(node, idx) {
-    var timeStr = node.time ? node.time.slice(0, 19).replace('T', ' ') : '';
+    var timeStr = formatTime(node.time);
     var dotClass = 'logistics-timeline-dot ' + (node.type || 'departed');
     var typeIcon = getNodeIcon(node.type);
 
@@ -970,9 +847,22 @@ function renderTimeline() {
     }
     html += '</div>';
   });
-  html += '</div>';
 
+  html += '</div>';
   body.innerHTML = html;
+}
+
+function formatTime(isoStr) {
+  if (!isoStr) return '';
+  try {
+    var d = new Date(isoStr);
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    var h = String(d.getHours()).padStart(2, '0');
+    var min = String(d.getMinutes()).padStart(2, '0');
+    return y + '-' + m + '-' + day + ' ' + h + ':' + min;
+  } catch (e) { return isoStr.slice(0, 19).replace('T', ' '); }
 }
 
 function getNodeIcon(type) {
@@ -987,16 +877,14 @@ function getNodeIcon(type) {
 }
 
 // ==========================================
-// 订单信息展示
+// 订单信息展示 + 财务联动
 // ==========================================
 function showOrderInfo(plan) {
   var area = document.getElementById('orderInfoArea');
-  if (!plan) {
-    area.innerHTML = '';
-    return;
-  }
+  if (!plan) { area.innerHTML = ''; return; }
 
-  var settleLabel = getSettleLabel(plan.settleStatus || 'unsettled');
+  var settleLabel = plan.settleStatus === 'settled' ? '已结算' :
+                    plan.settleStatus === 'partial' ? '部分结算' : '未结算';
   var settleColor = plan.settleStatus === 'settled' ? '#10b981' :
                     plan.settleStatus === 'partial' ? '#f59e0b' : '#ef4444';
   var isSettled = plan.settleStatus === 'settled';
@@ -1008,13 +896,41 @@ function showOrderInfo(plan) {
     '<span>数量: <strong>' + (plan.quantity || 0) + ' ' + escapeHtml(plan.unit || '吨') + '</strong></span>' +
     '<span>客户: <strong>' + escapeHtml(plan.customer || '-') + '</strong></span>' +
     '<span>结算: <strong style="color:' + settleColor + '">' + settleLabel + '</strong></span>' +
-    (isSettled ? '' : '<span class="settle-warning">⚠️ 未结算，无法修改物流</span>') +
-    '</div>';
+    '</div>' +
+    (isSettled ? '' :
+    '<div class="settle-lock-warning">' +
+    '🔒 该订单尚未完成财务结算，无法修改物流数据。请在 <strong>财务对账</strong> 中完成结算后操作。' +
+    '</div>');
+
+  // 更新编辑按钮状态
+  updateEditControlsState(isSettled);
 }
 
-function getSettleLabel(status) {
-  var map = { unsettled: '未结算', partial: '部分结算', settled: '已结算' };
-  return map[status] || '未结算';
+/**
+ * 根据结算状态启用/禁用编辑控件
+ */
+function updateEditControlsState(isSettled) {
+  var latInput = document.getElementById('editLat');
+  var lngInput = document.getElementById('editLng');
+  var descInput = document.getElementById('editDesc');
+  var updateBtn = document.getElementById('updateLocBtn');
+  var addNodeBtn = document.getElementById('addNodeBtn');
+
+  if (latInput) latInput.disabled = !isSettled;
+  if (lngInput) lngInput.disabled = !isSettled;
+  if (descInput) descInput.disabled = !isSettled;
+  if (updateBtn) updateBtn.disabled = !isSettled;
+  if (addNodeBtn) addNodeBtn.disabled = !isSettled;
+
+  if (!isSettled) {
+    if (latInput) latInput.style.cursor = 'not-allowed';
+    if (lngInput) lngInput.style.cursor = 'not-allowed';
+    if (descInput) descInput.style.cursor = 'not-allowed';
+  } else {
+    if (latInput) latInput.style.cursor = '';
+    if (lngInput) lngInput.style.cursor = '';
+    if (descInput) descInput.style.cursor = '';
+  }
 }
 
 // ==========================================
@@ -1061,23 +977,21 @@ function searchLogistics() {
 
   // 更新地图时间
   document.getElementById('mapUpdateTime').textContent =
-    '更新于 ' + (logistics.updatedAt ? logistics.updatedAt.slice(0, 19).replace('T', ' ') : '-');
+    '更新于 ' + formatTime(logistics.updatedAt);
 
   // 填充坐标编辑框
   document.getElementById('editLat').value = logistics.current.lat || '';
   document.getElementById('editLng').value = logistics.current.lng || '';
 
   // 初始化地图
-  setTimeout(function() {
-    initMap();
-  }, 200);
+  setTimeout(function() { initMap(); }, 200);
 
   // 渲染时间轴
   renderTimeline();
 }
 
 /**
- * 更新货物位置
+ * 更新货物位置（需已结算）
  */
 function updateLocation() {
   if (!currentLogistics || !currentPlan) {
@@ -1085,9 +999,9 @@ function updateLocation() {
     return;
   }
 
-  // 检查结算状态
+  // 财务联动：检查结算状态
   if (currentPlan.settleStatus !== 'settled') {
-    showToast('订单尚未完成财务结算，无法修改物流数据', 'warning');
+    showToast('🔒 订单尚未完成财务结算，无法修改物流数据', 'warning');
     return;
   }
 
@@ -1116,7 +1030,7 @@ function updateLocation() {
   currentLogistics.nodes.push({
     type: 'manual',
     title: '位置更新',
-    desc: '手动更新货物位置至 (' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ')',
+    desc: '手动更新货物位置至坐标 (' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ')',
     location: lat.toFixed(4) + ', ' + lng.toFixed(4),
     time: currentLogistics.updatedAt,
     lat: lat,
@@ -1130,15 +1044,15 @@ function updateLocation() {
 
   // 更新UI
   document.getElementById('mapUpdateTime').textContent =
-    '更新于 ' + currentLogistics.updatedAt.slice(0, 19).replace('T', ' ');
+    '更新于 ' + formatTime(currentLogistics.updatedAt);
   renderMapMarkers();
   renderTimeline();
 
-  showToast('✅ 货物位置已更新', 'success');
+  showToast('✅ 货物位置已更新，小车已移动至新坐标', 'success');
 }
 
 /**
- * 添加物流描述节点
+ * 添加物流描述节点（需已结算）
  */
 function addLogisticsNode() {
   if (!currentLogistics || !currentPlan) {
@@ -1146,9 +1060,9 @@ function addLogisticsNode() {
     return;
   }
 
-  // 检查结算状态
+  // 财务联动：检查结算状态
   if (currentPlan.settleStatus !== 'settled') {
-    showToast('订单尚未完成财务结算，无法修改物流数据', 'warning');
+    showToast('🔒 订单尚未完成财务结算，无法修改物流数据', 'warning');
     return;
   }
 
@@ -1171,7 +1085,7 @@ function addLogisticsNode() {
     nodeType = 'transit';
   } else if (lowerDesc.indexOf('延误') !== -1 || lowerDesc.indexOf('延迟') !== -1 || lowerDesc.indexOf('延期') !== -1) {
     nodeType = 'delayed';
-  } else if (lowerDesc.indexOf('出发') !== -1 || lowerDesc.indexOf('发车') !== -1 || lowerDesc.indexOf('出厂') !== -1) {
+  } else if (lowerDesc.indexOf('出发') !== -1 || lowerDesc.indexOf('发车') !== -1 || lowerDesc.indexOf('出厂') !== -1 || lowerDesc.indexOf('装车') !== -1) {
     nodeType = 'departed';
   }
 
@@ -1234,18 +1148,14 @@ function showToast(msg, type) {
   clearTimeout(toast._timeout);
   toast._timeout = setTimeout(function() {
     toast.style.display = 'none';
-  }, 2500);
-}
-
-function goBack() {
-  window.location.href = 'index.html';
+  }, 3000);
 }
 
 // ==========================================
-// 示例数据注入（演示用，首次访问自动生成）
+// 演示数据注入（首次访问自动生成）
 // ==========================================
-var DEMO_PLAN_NO = 'PL-20260603-001';
-var DEMO_INJECTED_KEY = 'steel_logistics_demo_injected_v2';
+var DEMO_PLAN_NO = 'SC20260603001';
+var DEMO_INJECTED_KEY = 'steel_logistics_demo_injected_v3';
 
 function injectDemoData() {
   // 检查是否已注入
@@ -1254,29 +1164,34 @@ function injectDemoData() {
   var now = new Date();
   var ts = now.toISOString();
 
-  // --- 1. 创建示例生产订单 ---
+  // --- 1. 创建示例生产订单 SC20260603001 ---
   var plans = getPlans();
   var existing = plans.find(function(p) { return p.planNo === DEMO_PLAN_NO; });
   if (!existing) {
     var demoPlan = {
       id: 'demo_' + Date.now(),
       planNo: DEMO_PLAN_NO,
-      steelType: 'Q235B 热轧卷板',
-      specification: '1500×12×C',
-      quantity: 35,
+      steelType: 'Q345B 低合金结构钢',
+      specification: '2000×14×L',
+      quantity: 42,
       unit: '吨',
-      customer: '上海华建钢构有限公司',
-      settleStatus: 'settled',  // 已结算，允许修改物流
-      unitPrice: 4200,
-      totalPrice: 147000,
-      receivedAmount: 147000,
+      customer: '广州建工集团钢结构分公司',
+      settleStatus: 'settled',
+      unitPrice: 4850,
+      totalPrice: 203700,
+      receivedAmount: 203700,
       unpaidAmount: 0,
+      deliveryDate: '2026-06-08',
+      status: 'processing',
+      processStep: 'quality_check',
+      progressStatus: 'processing',
+      remark: '用于广州白云站钢结构工程',
+      financeRemark: '已全额结算，合同号 GC-2026-0582',
+      deliveryAddress: '广州市白云区石井街道广清高速出口旁钢结构加工基地',
+      contactPerson: '李工',
+      contactPhone: '139-8888-5678',
       createdAt: ts,
-      updatedAt: ts,
-      financeRemark: '示例订单，已全额结算',
-      deliveryAddress: '上海市浦东新区张江高科技园区华建路88号',
-      contactPerson: '张经理',
-      contactPhone: '138-0000-1234'
+      updatedAt: ts
     };
     plans.push(demoPlan);
     try {
@@ -1285,107 +1200,110 @@ function injectDemoData() {
   }
 
   // --- 2. 创建完整物流数据 ---
-  // 模拟时间线：3天前出发 → 今天即将到达
-  var day1 = new Date(now.getTime() - 3 * 24 * 3600 * 1000);
-  var day2 = new Date(now.getTime() - 2 * 24 * 3600 * 1000);
-  var day3 = new Date(now.getTime() - 1 * 24 * 3600 * 1000);
-  var day3Night = new Date(now.getTime() - 1 * 24 * 3600 * 1000 + 8 * 3600 * 1000);
-  var day4 = new Date(now.getTime() - 6 * 3600 * 1000);
+  // 模拟时间线：从2026-06-03 08:20装车出发，跨越3天
+  var day1_820 = new Date(2026, 5, 3, 8, 20, 0);   // 2026-06-03 08:20
+  var day1_1030 = new Date(2026, 5, 3, 10, 30, 0);
+  var day1_1630 = new Date(2026, 5, 3, 16, 30, 0);
+  var day2_0620 = new Date(2026, 5, 4, 6, 20, 0);
+  var day2_1400 = new Date(2026, 5, 4, 14, 0, 0);
+  var day3_0820 = new Date(2026, 5, 5, 8, 20, 0);
+  var day3_1500 = new Date(2026, 5, 5, 15, 0, 0);
+  var day3_1800 = new Date(2026, 5, 5, 18, 0, 0);
 
   var logisticsData = getLogisticsData();
 
   logisticsData[DEMO_PLAN_NO] = {
     planNo: DEMO_PLAN_NO,
-    // 起点：北京某钢厂（河北唐山实际坐标）
+    // 起点：唐山钢厂
     origin: {
       lat: 39.634,
       lng: 118.180,
       name: '唐山钢铁厂区仓库'
     },
-    // 终点：上海浦东客户仓库
+    // 终点：广州白云
     destination: {
-      lat: 31.204,
-      lng: 121.589,
-      name: '上海华建钢构仓库'
+      lat: 23.212,
+      lng: 113.239,
+      name: '广州建工钢结构基地'
     },
-    // 当前位置：江苏苏州附近（运输途中）
+    // 当前位置：湖南衡阳附近（运输途中）
     current: {
-      lat: 31.299,
-      lng: 120.585
+      lat: 26.893,
+      lng: 112.572
     },
     // 完整物流节点
     nodes: [
       {
         type: 'departed',
         title: '订单已创建',
-        desc: '生产计划「' + DEMO_PLAN_NO + '」已录入系统，Q235B热轧卷板 35吨',
+        desc: '生产计划「SC20260603001」已录入系统，Q345B低合金结构钢 42吨，准备物流调度',
         location: '系统',
-        time: day1.toISOString(),
+        time: new Date(2026, 5, 2, 17, 0, 0).toISOString(),
         lat: null,
         lng: null
       },
       {
         type: 'departed',
         title: '货物已装车出厂',
-        desc: '35吨Q235B热轧卷板完成装车，车牌号：冀B·8A672挂，司机：王师傅 139-1234-5678，从唐山厂区出发',
+        desc: '42吨Q345B低合金结构钢完成装车，车牌号：冀B·9C582挂，司机：赵师傅 138-4567-8901。已通过出厂地磅，净重42.05吨，误差在允许范围内。',
         location: '唐山钢铁厂区仓库',
-        time: day2.toISOString(),
+        time: day1_820.toISOString(),
         lat: 39.634,
         lng: 118.180
       },
       {
         type: 'transit',
-        title: '途经天津，进入G2京沪高速',
-        desc: '运输车辆已通过天津收费站，沿G2京沪高速向南行驶，当前车速约75km/h，预计次日凌晨抵达济南服务区',
-        location: 'G2京沪高速天津段',
-        time: new Date(day2.getTime() + 4 * 3600 * 1000).toISOString(),
+        title: '途经天津，进入G18荣乌高速',
+        desc: '运输车辆已通过天津收费站，沿G18荣乌高速向南行驶。当前车速约80km/h，天气晴朗，路况良好。预计傍晚抵达河北山东交界处。',
+        location: 'G18荣乌高速天津段',
+        time: day1_1030.toISOString(),
         lat: 39.125,
         lng: 117.015
       },
       {
         type: 'transit',
-        title: '抵达济南服务区，短暂休整',
-        desc: '车辆在济南服务区停靠，司机休息用餐，检查货物捆扎情况，一切正常。预计停留30分钟后继续出发',
-        location: 'G2京沪高速济南服务区',
-        time: new Date(day2.getTime() + 12 * 3600 * 1000).toISOString(),
+        title: '抵达沧州服务区，司机休息用餐',
+        desc: '车辆在沧州服务区停靠，司机用餐休息，检查货物捆扎和篷布覆盖情况，一切正常。预计停留40分钟后继续出发。',
+        location: 'G18荣乌高速沧州服务区',
+        time: day1_1630.toISOString(),
+        lat: 38.304,
+        lng: 116.837
+      },
+      {
+        type: 'transit',
+        title: '进入山东境内，途经济南',
+        desc: '凌晨通过济南绕城高速，转入G3京台高速向南。夜间行车注意安全，预计天亮前到达鲁豫交界。',
+        location: 'G3京台高速济南段',
+        time: day2_0620.toISOString(),
         lat: 36.667,
         lng: 116.983
       },
       {
-        type: 'transit',
-        title: '途经徐州，进入江苏省界',
-        desc: '运输车辆已通过苏鲁省界收费站，进入江苏境内，沿G2京沪高速继续向南。天气晴朗，路况良好',
-        location: 'G2京沪高速徐州段',
-        time: day3.toISOString(),
-        lat: 34.265,
-        lng: 117.195
-      },
-      {
         type: 'delayed',
-        title: '淮安段遇到交通管制，略有延误',
-        desc: '因前方路段临时施工，车辆在淮安附近缓行约45分钟。目前已恢复通行，预计延误不影响整体时效',
-        location: 'G2京沪高速淮安段',
-        time: new Date(day3.getTime() + 8 * 3600 * 1000).toISOString(),
-        lat: 33.552,
-        lng: 119.023
+        title: '河南新乡段遇大雾，略有延误',
+        desc: '因河南新乡段突发大雾天气，能见度不足200米，车辆在服务区临时停靠等待。延误约2小时后天气转好，继续行驶。',
+        location: 'G4京港澳高速新乡段',
+        time: day2_1400.toISOString(),
+        lat: 35.303,
+        lng: 113.927
       },
       {
         type: 'transit',
-        title: '进入苏州境内，接近目的地',
-        desc: '车辆已通过苏州收费站，转入G15沈海高速上海方向。距离目的地约120公里，预计3小时内到达',
-        location: 'G15沈海高速苏州段',
-        time: day4.toISOString(),
-        lat: 31.299,
-        lng: 120.585
+        title: '进入湖南境内，途经长沙',
+        desc: '车辆已通过湘鄂省界，进入湖南境内。沿G4京港澳高速继续向南行驶。距离广州目的地约580公里，预计次日傍晚到达。',
+        location: 'G4京港澳高速长沙段',
+        time: day3_0820.toISOString(),
+        lat: 28.228,
+        lng: 112.939
       },
       {
-        type: 'manual',
-        title: '仓库准备接收',
-        desc: '上海华建钢构仓库已做好卸货准备，安排3名工人和2台叉车待命。货物到达后可直接卸货入库',
-        location: '上海浦东华建路88号',
-        time: new Date(now.getTime() - 1 * 3600 * 1000).toISOString(),
-        lat: 31.204,
-        lng: 121.589
+        type: 'transit',
+        title: '抵达衡阳，接近广东',
+        desc: '车辆已到达衡阳段，在衡阳服务区短暂休整。距离广东省界约120公里，预计2小时内进入广东。',
+        location: 'G4京港澳高速衡阳段',
+        time: day3_1500.toISOString(),
+        lat: 26.893,
+        lng: 112.572
       }
     ],
     updatedAt: ts

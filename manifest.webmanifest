@@ -79,9 +79,9 @@
       "icons": [{ "src": "icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
-      "name": "物流跟踪",
+      "name": "物流跟进",
       "short_name": "物流",
-      "description": "实时追踪订单物流状态",
+      "description": "实时追踪订单物流状态，地图轨迹 + 时间轴",
       "url": "logistics.html",
       "icons": [{ "src": "icons/icon-96x96.png", "sizes": "96x96" }]
     }
