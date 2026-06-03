@@ -12,8 +12,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/style.css">
 
-  <!-- 百度地图 JS API -->
-  <script src="https://api.map.baidu.com/api?v=3.0&type=webgl&ak=你的百度地图AK密钥"></script>
+  <!-- 高德地图 JS API（无需密钥） -->
+  <script src="https://webapi.amap.com/maps?v=2.0&key=ee93e6cbf93e9c6e1b2d9cf37f95cf0a"></script>
 
   <style>
     /* ========== 物流页面专属样式 ========== */
@@ -757,43 +757,33 @@ function getPlanByPlanNo(planNo) {
 }
 
 // ==========================================
-// 百度地图
+// 高德地图（无需密钥）
 // ==========================================
-var bmapInstance = null;
+var mapInstance = null;
 var currentLogistics = null;
 var currentPlan = null;
+var mapMarkers = []; // 存放当前所有覆盖物
 
 function initMap() {
-  if (bmapInstance) return;
+  if (mapInstance) return;
   var container = document.getElementById('baiduMap');
   if (!container || container.offsetWidth === 0) return;
 
   try {
-    // 检查百度地图API是否加载
-    if (typeof BMapGL === 'undefined') {
+    // 检查高德地图API是否加载
+    if (typeof AMap === 'undefined') {
       document.getElementById('baiduMap').innerHTML =
         '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:0.875rem;">' +
-        '📍 百度地图加载中...<br><small>如长时间未显示，请检查网络连接</small></div>';
+        '📍 地图加载中...<br><small>如长时间未显示，请检查网络连接</small></div>';
       return;
     }
 
-    bmapInstance = new BMapGL.Map('baiduMap', {
-      enableMapClick: false
+    mapInstance = new AMap.Map('baiduMap', {
+      zoom: 7,
+      center: [116.404, 39.915],
+      mapStyle: 'amap://styles/light',
+      resizeEnable: true
     });
-
-    // 设置地图样式
-    bmapInstance.setMapStyleV2({ styleId: 'a0f35c9e8b9c0e9f6e8d6f4e2c0a8b6d' });
-
-    var point = new BMapGL.Point(116.404, 39.915);
-    bmapInstance.centerAndZoom(point, 12);
-    bmapInstance.enableScrollWheelZoom(true);
-    bmapInstance.setMapType(BMAP_EARTH_MAP);
-
-    // 添加比例尺和缩放控件
-    var scaleCtrl = new BMapGL.ScaleControl();
-    bmapInstance.addControl(scaleCtrl);
-    var zoomCtrl = new BMapGL.ZoomControl();
-    bmapInstance.addControl(zoomCtrl);
 
     renderMapMarkers();
   } catch (e) {
@@ -808,8 +798,11 @@ function initMap() {
  * 渲染地图标记（起点、终点、当前位置、路线）
  */
 function renderMapMarkers() {
-  if (!bmapInstance || !currentLogistics) return;
-  bmapInstance.clearOverlays();
+  if (!mapInstance || !currentLogistics) return;
+
+  // 清除所有覆盖物
+  mapInstance.clearMap();
+  mapMarkers = [];
 
   var origin = currentLogistics.origin;
   var dest = currentLogistics.destination;
@@ -817,117 +810,95 @@ function renderMapMarkers() {
 
   // 起点标记（厂区）
   if (origin && origin.lat && origin.lng) {
-    var originPt = new BMapGL.Point(origin.lng, origin.lat);
-    var originMarker = new BMapGL.Marker(originPt);
-    var originLabel = new BMapGL.Label('🏭 ' + (origin.name || '厂区'), {
-      position: originPt,
-      offset: new BMapGL.Size(20, -10)
+    var originContent = '<div style="background:rgba(26,35,50,0.9);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;">🏭 ' + (origin.name || '厂区') + '</div>';
+    var originMarker = new AMap.Marker({
+      position: [origin.lng, origin.lat],
+      content: '<div style="background:#1a2332;color:#fff;width:24px;height:24px;border-radius:50%;text-align:center;line-height:24px;font-size:14px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🏭</div>',
+      offset: new AMap.Pixel(-12, -12)
     });
-    originLabel.setStyle({
-      background: 'rgba(26,35,50,0.9)',
-      color: '#fff',
-      padding: '4px 10px',
-      borderRadius: '6px',
-      fontSize: '12px',
-      fontWeight: '600',
-      border: 'none',
-      whiteSpace: 'nowrap'
+    var originLabel = new AMap.Marker({
+      position: [origin.lng, origin.lat],
+      content: originContent,
+      offset: new AMap.Pixel(-40, -38)
     });
-    bmapInstance.addOverlay(originMarker);
-    bmapInstance.addOverlay(originLabel);
+    originMarker.setMap(mapInstance);
+    originLabel.setMap(mapInstance);
+    mapMarkers.push(originMarker, originLabel);
   }
 
   // 终点标记（仓库）
   if (dest && dest.lat && dest.lng) {
-    var destPt = new BMapGL.Point(dest.lng, dest.lat);
-    var destMarker = new BMapGL.Marker(destPt);
-    var destLabel = new BMapGL.Label('📦 ' + (dest.name || '目的地'), {
-      position: destPt,
-      offset: new BMapGL.Size(20, -10)
+    var destContent = '<div style="background:rgba(16,185,129,0.9);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;">📦 ' + (dest.name || '目的地') + '</div>';
+    var destMarker = new AMap.Marker({
+      position: [dest.lng, dest.lat],
+      content: '<div style="background:#10b981;color:#fff;width:24px;height:24px;border-radius:50%;text-align:center;line-height:24px;font-size:14px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📦</div>',
+      offset: new AMap.Pixel(-12, -12)
     });
-    destLabel.setStyle({
-      background: 'rgba(16,185,129,0.9)',
-      color: '#fff',
-      padding: '4px 10px',
-      borderRadius: '6px',
-      fontSize: '12px',
-      fontWeight: '600',
-      border: 'none',
-      whiteSpace: 'nowrap'
+    var destLabel = new AMap.Marker({
+      position: [dest.lng, dest.lat],
+      content: destContent,
+      offset: new AMap.Pixel(-40, -38)
     });
-    bmapInstance.addOverlay(destMarker);
-    bmapInstance.addOverlay(destLabel);
+    destMarker.setMap(mapInstance);
+    destLabel.setMap(mapInstance);
+    mapMarkers.push(destMarker, destLabel);
   }
 
   // 当前位置（小车图标）
   if (current && current.lat && current.lng) {
-    var currentPt = new BMapGL.Point(current.lng, current.lat);
-    var currentMarker = new BMapGL.Marker(currentPt);
-    var currentLabel = new BMapGL.Label('🚛 当前位置', {
-      position: currentPt,
-      offset: new BMapGL.Size(25, -25)
+    var currentContent = '<div style="background:rgba(37,99,235,0.95);color:#fff;padding:5px 12px;border-radius:8px;font-size:13px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);white-space:nowrap;">🚛 当前位置</div>';
+    var currentMarker = new AMap.Marker({
+      position: [current.lng, current.lat],
+      content: '<div style="background:#2563eb;color:#fff;width:32px;height:32px;border-radius:50%;text-align:center;line-height:32px;font-size:18px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);">🚛</div>',
+      offset: new AMap.Pixel(-16, -16)
     });
-    currentLabel.setStyle({
-      background: 'rgba(37,99,235,0.95)',
-      color: '#fff',
-      padding: '5px 12px',
-      borderRadius: '8px',
-      fontSize: '13px',
-      fontWeight: '700',
-      border: '2px solid #fff',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-      whiteSpace: 'nowrap',
-      animation: 'none'
+    var currentLabel = new AMap.Marker({
+      position: [current.lng, current.lat],
+      content: currentContent,
+      offset: new AMap.Pixel(-55, -50)
     });
-    bmapInstance.addOverlay(currentMarker);
-    bmapInstance.addOverlay(currentLabel);
+    currentMarker.setMap(mapInstance);
+    currentLabel.setMap(mapInstance);
+    mapMarkers.push(currentMarker, currentLabel);
 
     // 添加脉动圆环效果
-    var circle = new BMapGL.Circle(currentPt, 500, {
+    var circle = new AMap.Circle({
+      center: [current.lng, current.lat],
+      radius: 30000,
       strokeColor: '#2563eb',
       strokeWeight: 2,
       strokeOpacity: 0.3,
       fillColor: '#2563eb',
       fillOpacity: 0.08
     });
-    bmapInstance.addOverlay(circle);
+    circle.setMap(mapInstance);
+    mapMarkers.push(circle);
   }
 
   // 绘制路线（起点→当前位置→终点）
   if (origin && origin.lat && origin.lng && dest && dest.lat && dest.lng) {
-    var points = [];
-    points.push(new BMapGL.Point(origin.lng, origin.lat));
+    var path = [[origin.lng, origin.lat]];
     if (current && current.lat && current.lng) {
-      points.push(new BMapGL.Point(current.lng, current.lat));
+      path.push([current.lng, current.lat]);
     }
-    points.push(new BMapGL.Point(dest.lng, dest.lat));
+    path.push([dest.lng, dest.lat]);
 
-    if (points.length >= 2) {
-      var polyline = new BMapGL.Polyline(points, {
+    if (path.length >= 2) {
+      var polyline = new AMap.Polyline({
+        path: path,
         strokeColor: '#2563eb',
         strokeWeight: 3,
         strokeOpacity: 0.6,
-        strokeStyle: 'dashed'
+        strokeStyle: 'dashed',
+        lineJoin: 'round'
       });
-      bmapInstance.addOverlay(polyline);
+      polyline.setMap(mapInstance);
+      mapMarkers.push(polyline);
     }
   }
 
   // 自适应视野
-  try {
-    var allPts = [];
-    if (origin && origin.lat && origin.lng) allPts.push(new BMapGL.Point(origin.lng, origin.lat));
-    if (dest && dest.lat && dest.lng) allPts.push(new BMapGL.Point(dest.lng, dest.lat));
-    if (current && current.lat && current.lng) allPts.push(new BMapGL.Point(current.lng, current.lat));
-
-    if (allPts.length >= 2) {
-      bmapInstance.setViewport(allPts, { margins: [40, 40, 40, 40] });
-    } else if (allPts.length === 1) {
-      bmapInstance.centerAndZoom(allPts[0], 14);
-    }
-  } catch (e) {
-    // 忽略视野计算错误
-  }
+  mapInstance.setFitView(null, false, [40, 40, 40, 40]);
 }
 
 // ==========================================
@@ -1407,7 +1378,7 @@ function injectDemoData() {
 
   // 监听窗口大小变化，重新渲染地图
   window.addEventListener('resize', function() {
-    if (bmapInstance && currentLogistics) {
+    if (mapInstance && currentLogistics) {
       setTimeout(function() { renderMapMarkers(); }, 300);
     }
   });
