@@ -586,6 +586,8 @@
 <!-- Toast -->
 <div id="logisticsToast" class="logistics-toast" style="display:none;"></div>
 
+<!-- 复用主站完整存储层（保证数据格式一致，避免页面切换时数据丢失） -->
+<script src="js/storage.js"></script>
 <script>
 // ==========================================
 // 物流数据存储层
@@ -644,20 +646,9 @@ function initLogisticsForOrder(planNo, plan) {
   return logistics;
 }
 
-// ==========================================
-// 生产数据读取（复用 storage.js 数据格式）
-// ==========================================
-var STORAGE_KEY = 'steel_production_plans';
-
-function getPlans() {
-  try {
-    var data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return [];
-    var plans = JSON.parse(data);
-    return Array.isArray(plans) ? plans : [];
-  } catch (e) { return []; }
-}
-
+/**
+ * 通过订单编号查找计划（复用 storage.js 的 getPlans + normalizePlan）
+ */
 function getPlanByPlanNo(planNo) {
   var plans = getPlans();
   return plans.find(function(p) { return p.planNo === planNo; }) || null;
@@ -1160,14 +1151,32 @@ function showToast(msg, type) {
 }
 
 // ==========================================
-// 演示数据注入（首次访问自动生成）
+// 演示数据注入（首次访问自动生成，含完整性校验）
 // ==========================================
 var DEMO_PLAN_NO = 'SC20260603001';
-var DEMO_INJECTED_KEY = 'steel_logistics_demo_injected_v4';
+var DEMO_INJECTED_KEY = 'steel_logistics_demo_injected_v5';
+
+/**
+ * 检查演示订单数据是否完整
+ */
+function checkDemoDataIntegrity() {
+  var plans = getPlans();
+  var plan = plans.find(function(p) { return p.planNo === DEMO_PLAN_NO; });
+  if (!plan) return false;
+
+  var logistics = getLogisticsByPlanNo(DEMO_PLAN_NO);
+  if (!logistics) return false;
+  if (!logistics.nodes || logistics.nodes.length < 3) return false;
+  if (!logistics.origin || !logistics.destination || !logistics.current) return false;
+
+  return true;
+}
 
 function injectDemoData() {
-  // 检查是否已注入
-  if (localStorage.getItem(DEMO_INJECTED_KEY)) return false;
+  // 如果数据完整，跳过注入
+  if (localStorage.getItem(DEMO_INJECTED_KEY) && checkDemoDataIntegrity()) {
+    return false;
+  }
 
   var now = new Date();
   var ts = now.toISOString();
@@ -1199,16 +1208,17 @@ function injectDemoData() {
       contactPerson: '李工',
       contactPhone: '139-8888-5678',
       createdAt: ts,
-      updatedAt: ts
+      updatedAt: ts,
+      operationLogs: [],
+      financeLogs: [],
+      paymentRecords: []
     };
     plans.push(demoPlan);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
-    } catch(e) {}
+    // 使用 savePlans 而非直接写 localStorage，确保首页也能正确读取
+    try { savePlans(plans); } catch(e) {}
   }
 
   // --- 2. 创建完整物流数据 ---
-  // 模拟时间线：从2026-06-03 08:20装车出发，跨越3天
   var day1_820 = new Date(2026, 5, 3, 8, 20, 0);
   var day1_1030 = new Date(2026, 5, 3, 10, 30, 0);
   var day1_1630 = new Date(2026, 5, 3, 16, 30, 0);
@@ -1221,24 +1231,20 @@ function injectDemoData() {
 
   logisticsData[DEMO_PLAN_NO] = {
     planNo: DEMO_PLAN_NO,
-    // 起点：唐山钢厂
     origin: {
       lat: 39.634,
       lng: 118.180,
       name: '唐山钢铁厂区仓库'
     },
-    // 终点：广州白云
     destination: {
       lat: 23.212,
       lng: 113.239,
       name: '广州建工钢结构基地'
     },
-    // 当前位置：湖南衡阳附近（运输途中）
     current: {
       lat: 26.893,
       lng: 112.572
     },
-    // 完整物流节点
     nodes: [
       {
         type: 'departed',
@@ -1345,7 +1351,7 @@ function injectDemoData() {
 // 页面初始化
 // ==========================================
 (function init() {
-  // 自动注入示例数据
+  // 自动注入/修复示例数据
   var injected = false;
   try {
     injected = injectDemoData();
@@ -1372,14 +1378,23 @@ function injectDemoData() {
     autoPlanNo = urlParams.get('planNo');
   } catch(e) {}
 
-  // 如果是首次注入或URL带参数，自动加载示例
+  // 如果URL带参数，按参数查询
   if (autoPlanNo) {
     document.getElementById('orderSearchInput').value = autoPlanNo;
     setTimeout(function() { searchLogistics(); }, 500);
-  } else if (injected) {
-    // 首次注入示例数据后，自动填入并查询
-    document.getElementById('orderSearchInput').value = DEMO_PLAN_NO;
-    setTimeout(function() { searchLogistics(); }, 800);
+  } else {
+    // 检查是否有演示数据可自动加载
+    var hasDemo = checkDemoDataIntegrity();
+    if (hasDemo) {
+      // 演示数据完整，自动加载（无论是否首次注入）
+      document.getElementById('orderSearchInput').value = DEMO_PLAN_NO;
+      setTimeout(function() { searchLogistics(); }, 600);
+    } else if (injected) {
+      // 刚刚注入成功，也自动加载
+      document.getElementById('orderSearchInput').value = DEMO_PLAN_NO;
+      setTimeout(function() { searchLogistics(); }, 800);
+    }
+    // 如果没有演示数据且未注入，保持空状态让用户手动输入
   }
 })();
 </script>
