@@ -1239,9 +1239,172 @@ function goBack() {
 }
 
 // ==========================================
+// 示例数据注入（演示用，首次访问自动生成）
+// ==========================================
+var DEMO_PLAN_NO = 'PL-20260603-001';
+var DEMO_INJECTED_KEY = 'steel_logistics_demo_injected_v2';
+
+function injectDemoData() {
+  // 检查是否已注入
+  if (localStorage.getItem(DEMO_INJECTED_KEY)) return false;
+
+  var now = new Date();
+  var ts = now.toISOString();
+
+  // --- 1. 创建示例生产订单 ---
+  var plans = getPlans();
+  var existing = plans.find(function(p) { return p.planNo === DEMO_PLAN_NO; });
+  if (!existing) {
+    var demoPlan = {
+      id: 'demo_' + Date.now(),
+      planNo: DEMO_PLAN_NO,
+      steelType: 'Q235B 热轧卷板',
+      specification: '1500×12×C',
+      quantity: 35,
+      unit: '吨',
+      customer: '上海华建钢构有限公司',
+      settleStatus: 'settled',  // 已结算，允许修改物流
+      unitPrice: 4200,
+      totalPrice: 147000,
+      receivedAmount: 147000,
+      unpaidAmount: 0,
+      createdAt: ts,
+      updatedAt: ts,
+      financeRemark: '示例订单，已全额结算',
+      deliveryAddress: '上海市浦东新区张江高科技园区华建路88号',
+      contactPerson: '张经理',
+      contactPhone: '138-0000-1234'
+    };
+    plans.push(demoPlan);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
+    } catch(e) {}
+  }
+
+  // --- 2. 创建完整物流数据 ---
+  // 模拟时间线：3天前出发 → 今天即将到达
+  var day1 = new Date(now.getTime() - 3 * 24 * 3600 * 1000);
+  var day2 = new Date(now.getTime() - 2 * 24 * 3600 * 1000);
+  var day3 = new Date(now.getTime() - 1 * 24 * 3600 * 1000);
+  var day3Night = new Date(now.getTime() - 1 * 24 * 3600 * 1000 + 8 * 3600 * 1000);
+  var day4 = new Date(now.getTime() - 6 * 3600 * 1000);
+
+  var logisticsData = getLogisticsData();
+
+  logisticsData[DEMO_PLAN_NO] = {
+    planNo: DEMO_PLAN_NO,
+    // 起点：北京某钢厂（河北唐山实际坐标）
+    origin: {
+      lat: 39.634,
+      lng: 118.180,
+      name: '唐山钢铁厂区仓库'
+    },
+    // 终点：上海浦东客户仓库
+    destination: {
+      lat: 31.204,
+      lng: 121.589,
+      name: '上海华建钢构仓库'
+    },
+    // 当前位置：江苏苏州附近（运输途中）
+    current: {
+      lat: 31.299,
+      lng: 120.585
+    },
+    // 完整物流节点
+    nodes: [
+      {
+        type: 'departed',
+        title: '订单已创建',
+        desc: '生产计划「' + DEMO_PLAN_NO + '」已录入系统，Q235B热轧卷板 35吨',
+        location: '系统',
+        time: day1.toISOString(),
+        lat: null,
+        lng: null
+      },
+      {
+        type: 'departed',
+        title: '货物已装车出厂',
+        desc: '35吨Q235B热轧卷板完成装车，车牌号：冀B·8A672挂，司机：王师傅 139-1234-5678，从唐山厂区出发',
+        location: '唐山钢铁厂区仓库',
+        time: day2.toISOString(),
+        lat: 39.634,
+        lng: 118.180
+      },
+      {
+        type: 'transit',
+        title: '途经天津，进入G2京沪高速',
+        desc: '运输车辆已通过天津收费站，沿G2京沪高速向南行驶，当前车速约75km/h，预计次日凌晨抵达济南服务区',
+        location: 'G2京沪高速天津段',
+        time: new Date(day2.getTime() + 4 * 3600 * 1000).toISOString(),
+        lat: 39.125,
+        lng: 117.015
+      },
+      {
+        type: 'transit',
+        title: '抵达济南服务区，短暂休整',
+        desc: '车辆在济南服务区停靠，司机休息用餐，检查货物捆扎情况，一切正常。预计停留30分钟后继续出发',
+        location: 'G2京沪高速济南服务区',
+        time: new Date(day2.getTime() + 12 * 3600 * 1000).toISOString(),
+        lat: 36.667,
+        lng: 116.983
+      },
+      {
+        type: 'transit',
+        title: '途经徐州，进入江苏省界',
+        desc: '运输车辆已通过苏鲁省界收费站，进入江苏境内，沿G2京沪高速继续向南。天气晴朗，路况良好',
+        location: 'G2京沪高速徐州段',
+        time: day3.toISOString(),
+        lat: 34.265,
+        lng: 117.195
+      },
+      {
+        type: 'delayed',
+        title: '淮安段遇到交通管制，略有延误',
+        desc: '因前方路段临时施工，车辆在淮安附近缓行约45分钟。目前已恢复通行，预计延误不影响整体时效',
+        location: 'G2京沪高速淮安段',
+        time: new Date(day3.getTime() + 8 * 3600 * 1000).toISOString(),
+        lat: 33.552,
+        lng: 119.023
+      },
+      {
+        type: 'transit',
+        title: '进入苏州境内，接近目的地',
+        desc: '车辆已通过苏州收费站，转入G15沈海高速上海方向。距离目的地约120公里，预计3小时内到达',
+        location: 'G15沈海高速苏州段',
+        time: day4.toISOString(),
+        lat: 31.299,
+        lng: 120.585
+      },
+      {
+        type: 'manual',
+        title: '仓库准备接收',
+        desc: '上海华建钢构仓库已做好卸货准备，安排3名工人和2台叉车待命。货物到达后可直接卸货入库',
+        location: '上海浦东华建路88号',
+        time: new Date(now.getTime() - 1 * 3600 * 1000).toISOString(),
+        lat: 31.204,
+        lng: 121.589
+      }
+    ],
+    updatedAt: ts
+  };
+
+  saveLogisticsData(logisticsData);
+
+  // 标记已注入
+  try {
+    localStorage.setItem(DEMO_INJECTED_KEY, '1');
+  } catch(e) {}
+
+  return true;
+}
+
+// ==========================================
 // 页面初始化
 // ==========================================
 (function init() {
+  // 自动注入示例数据
+  var injected = injectDemoData();
+
   // 监听窗口大小变化，重新渲染地图
   window.addEventListener('resize', function() {
     if (bmapInstance && currentLogistics) {
@@ -1252,9 +1415,15 @@ function goBack() {
   // 如果URL带有参数，自动查询
   var urlParams = new URLSearchParams(window.location.search);
   var autoPlanNo = urlParams.get('planNo');
+
+  // 如果是首次注入或URL带参数，自动加载示例
   if (autoPlanNo) {
     document.getElementById('orderSearchInput').value = autoPlanNo;
     setTimeout(function() { searchLogistics(); }, 500);
+  } else if (injected) {
+    // 首次注入示例数据后，自动填入并查询
+    document.getElementById('orderSearchInput').value = DEMO_PLAN_NO;
+    setTimeout(function() { searchLogistics(); }, 600);
   }
 })();
 </script>
