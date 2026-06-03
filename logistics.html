@@ -12,8 +12,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/style.css">
 
-  <!-- 高德地图 JS API（无需密钥） -->
-  <script src="https://webapi.amap.com/maps?v=2.0&key=ee93e6cbf93e9c6e1b2d9cf37f95cf0a"></script>
+  <!-- Leaflet + OpenStreetMap（完全开源免费，无需密钥） -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
     /* ========== 物流页面专属样式 ========== */
@@ -211,10 +212,7 @@
       height: 400px;
       background: #e8ecf1;
       position: relative;
-    }
-
-    .logistics-map-container .BMap_mask {
-      display: none;
+      z-index: 1;
     }
 
     /* 坐标编辑区 */
@@ -757,40 +755,79 @@ function getPlanByPlanNo(planNo) {
 }
 
 // ==========================================
-// 高德地图（无需密钥）
+// Leaflet + OpenStreetMap（开源免费，永不失效）
 // ==========================================
 var mapInstance = null;
 var currentLogistics = null;
 var currentPlan = null;
-var mapMarkers = []; // 存放当前所有覆盖物
+var mapLayers = [];       // 存放当前图层引用
+var MAP_INIT_TIMEOUT = 8000; // 8秒超时
+var mapInitTimer = null;
+
+// 自定义图标工厂
+var iconFactory = {
+  origin: L.divIcon({
+    className: '',
+    html: '<div style="background:#1a2332;color:#fff;width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">🏭</div>',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  }),
+  dest: L.divIcon({
+    className: '',
+    html: '<div style="background:#10b981;color:#fff;width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">📦</div>',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  }),
+  current: L.divIcon({
+    className: '',
+    html: '<div style="background:#2563eb;color:#fff;width:36px;height:36px;border-radius:50%;text-align:center;line-height:36px;font-size:20px;border:3px solid #fff;box-shadow:0 3px 12px rgba(37,99,235,0.5);">🚛</div>',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18]
+  })
+};
 
 function initMap() {
   if (mapInstance) return;
+
   var container = document.getElementById('baiduMap');
   if (!container || container.offsetWidth === 0) return;
 
+  // 防止重复初始化
+  if (container._mapInitializing) return;
+  container._mapInitializing = true;
+
   try {
-    // 检查高德地图API是否加载
-    if (typeof AMap === 'undefined') {
-      document.getElementById('baiduMap').innerHTML =
+    // 检查 Leaflet 是否加载
+    if (typeof L === 'undefined') {
+      container.innerHTML =
         '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:0.875rem;">' +
-        '📍 地图加载中...<br><small>如长时间未显示，请检查网络连接</small></div>';
+        '📍 地图库加载中...<br><small>请检查网络连接后刷新页面</small></div>';
+      container._mapInitializing = false;
       return;
     }
 
-    mapInstance = new AMap.Map('baiduMap', {
+    mapInstance = L.map('baiduMap', {
+      center: [39.915, 116.404],
       zoom: 7,
-      center: [116.404, 39.915],
-      mapStyle: 'amap://styles/light',
-      resizeEnable: true
+      zoomControl: true,
+      attributionControl: false,
+      scrollWheelZoom: true
     });
 
+    // 使用 OpenStreetMap 瓦片（免费开源，无需密钥）
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      minZoom: 3
+    }).addTo(mapInstance);
+
+    container._mapInitializing = false;
     renderMapMarkers();
   } catch (e) {
     console.error('地图初始化失败:', e);
-    document.getElementById('baiduMap').innerHTML =
+    container.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:0.875rem;">' +
-      '⚠️ 地图加载失败，请刷新页面重试</div>';
+      '⚠️ 地图加载失败<br><small>请检查网络连接后刷新页面</small></div>';
+    container._mapInitializing = false;
   }
 }
 
@@ -800,9 +837,9 @@ function initMap() {
 function renderMapMarkers() {
   if (!mapInstance || !currentLogistics) return;
 
-  // 清除所有覆盖物
-  mapInstance.clearMap();
-  mapMarkers = [];
+  // 清除旧图层
+  mapLayers.forEach(function(l) { try { mapInstance.removeLayer(l); } catch(e) {} });
+  mapLayers = [];
 
   var origin = currentLogistics.origin;
   var dest = currentLogistics.destination;
@@ -810,95 +847,90 @@ function renderMapMarkers() {
 
   // 起点标记（厂区）
   if (origin && origin.lat && origin.lng) {
-    var originContent = '<div style="background:rgba(26,35,50,0.9);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;">🏭 ' + (origin.name || '厂区') + '</div>';
-    var originMarker = new AMap.Marker({
-      position: [origin.lng, origin.lat],
-      content: '<div style="background:#1a2332;color:#fff;width:24px;height:24px;border-radius:50%;text-align:center;line-height:24px;font-size:14px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🏭</div>',
-      offset: new AMap.Pixel(-12, -12)
-    });
-    var originLabel = new AMap.Marker({
-      position: [origin.lng, origin.lat],
-      content: originContent,
-      offset: new AMap.Pixel(-40, -38)
-    });
-    originMarker.setMap(mapInstance);
-    originLabel.setMap(mapInstance);
-    mapMarkers.push(originMarker, originLabel);
+    var originMarker = L.marker([origin.lat, origin.lng], { icon: iconFactory.origin }).addTo(mapInstance);
+    var originLabel = L.marker([origin.lat, origin.lng], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div style="background:rgba(26,35,50,0.9);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;">🏭 ' + (origin.name || '厂区') + '</div>',
+        iconSize: [120, 24],
+        iconAnchor: [60, -10]
+      })
+    }).addTo(mapInstance);
+    mapLayers.push(originMarker, originLabel);
   }
 
   // 终点标记（仓库）
   if (dest && dest.lat && dest.lng) {
-    var destContent = '<div style="background:rgba(16,185,129,0.9);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;">📦 ' + (dest.name || '目的地') + '</div>';
-    var destMarker = new AMap.Marker({
-      position: [dest.lng, dest.lat],
-      content: '<div style="background:#10b981;color:#fff;width:24px;height:24px;border-radius:50%;text-align:center;line-height:24px;font-size:14px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📦</div>',
-      offset: new AMap.Pixel(-12, -12)
-    });
-    var destLabel = new AMap.Marker({
-      position: [dest.lng, dest.lat],
-      content: destContent,
-      offset: new AMap.Pixel(-40, -38)
-    });
-    destMarker.setMap(mapInstance);
-    destLabel.setMap(mapInstance);
-    mapMarkers.push(destMarker, destLabel);
+    var destMarker = L.marker([dest.lat, dest.lng], { icon: iconFactory.dest }).addTo(mapInstance);
+    var destLabel = L.marker([dest.lat, dest.lng], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div style="background:rgba(16,185,129,0.9);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;">📦 ' + (dest.name || '目的地') + '</div>',
+        iconSize: [120, 24],
+        iconAnchor: [60, -10]
+      })
+    }).addTo(mapInstance);
+    mapLayers.push(destMarker, destLabel);
   }
 
-  // 当前位置（小车图标）
+  // 当前位置（小车图标 + 脉动圆环）
   if (current && current.lat && current.lng) {
-    var currentContent = '<div style="background:rgba(37,99,235,0.95);color:#fff;padding:5px 12px;border-radius:8px;font-size:13px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);white-space:nowrap;">🚛 当前位置</div>';
-    var currentMarker = new AMap.Marker({
-      position: [current.lng, current.lat],
-      content: '<div style="background:#2563eb;color:#fff;width:32px;height:32px;border-radius:50%;text-align:center;line-height:32px;font-size:18px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);">🚛</div>',
-      offset: new AMap.Pixel(-16, -16)
-    });
-    var currentLabel = new AMap.Marker({
-      position: [current.lng, current.lat],
-      content: currentContent,
-      offset: new AMap.Pixel(-55, -50)
-    });
-    currentMarker.setMap(mapInstance);
-    currentLabel.setMap(mapInstance);
-    mapMarkers.push(currentMarker, currentLabel);
+    var currentMarker = L.marker([current.lat, current.lng], { icon: iconFactory.current }).addTo(mapInstance);
+    var currentLabel = L.marker([current.lat, current.lng], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div style="background:rgba(37,99,235,0.95);color:#fff;padding:5px 12px;border-radius:8px;font-size:13px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);white-space:nowrap;">🚛 当前位置</div>',
+        iconSize: [110, 30],
+        iconAnchor: [55, -18]
+      })
+    }).addTo(mapInstance);
 
-    // 添加脉动圆环效果
-    var circle = new AMap.Circle({
-      center: [current.lng, current.lat],
+    // 脉动圆环
+    var circle = L.circle([current.lat, current.lng], {
       radius: 30000,
-      strokeColor: '#2563eb',
-      strokeWeight: 2,
-      strokeOpacity: 0.3,
+      color: '#2563eb',
+      weight: 2,
+      opacity: 0.3,
       fillColor: '#2563eb',
       fillOpacity: 0.08
-    });
-    circle.setMap(mapInstance);
-    mapMarkers.push(circle);
+    }).addTo(mapInstance);
+
+    mapLayers.push(currentMarker, currentLabel, circle);
   }
 
-  // 绘制路线（起点→当前位置→终点）
+  // 绘制虚线路线
   if (origin && origin.lat && origin.lng && dest && dest.lat && dest.lng) {
-    var path = [[origin.lng, origin.lat]];
+    var latlngs = [[origin.lat, origin.lng]];
     if (current && current.lat && current.lng) {
-      path.push([current.lng, current.lat]);
+      latlngs.push([current.lat, current.lng]);
     }
-    path.push([dest.lng, dest.lat]);
+    latlngs.push([dest.lat, dest.lng]);
 
-    if (path.length >= 2) {
-      var polyline = new AMap.Polyline({
-        path: path,
-        strokeColor: '#2563eb',
-        strokeWeight: 3,
-        strokeOpacity: 0.6,
-        strokeStyle: 'dashed',
+    if (latlngs.length >= 2) {
+      var polyline = L.polyline(latlngs, {
+        color: '#2563eb',
+        weight: 3,
+        opacity: 0.6,
+        dashArray: '10, 8',
         lineJoin: 'round'
-      });
-      polyline.setMap(mapInstance);
-      mapMarkers.push(polyline);
+      }).addTo(mapInstance);
+      mapLayers.push(polyline);
     }
   }
 
   // 自适应视野
-  mapInstance.setFitView(null, false, [40, 40, 40, 40]);
+  try {
+    var bounds = [];
+    if (origin && origin.lat && origin.lng) bounds.push([origin.lat, origin.lng]);
+    if (dest && dest.lat && dest.lng) bounds.push([dest.lat, dest.lng]);
+    if (current && current.lat && current.lng) bounds.push([current.lat, current.lng]);
+
+    if (bounds.length >= 2) {
+      mapInstance.fitBounds(bounds, { padding: [40, 40] });
+    } else if (bounds.length === 1) {
+      mapInstance.setView(bounds[0], 12);
+    }
+  } catch (e) {}
 }
 
 // ==========================================
@@ -1370,22 +1402,35 @@ function injectDemoData() {
 }
 
 // ==========================================
-// 页面初始化
+// 页面初始化（加固版）
 // ==========================================
 (function init() {
   // 自动注入示例数据
-  var injected = injectDemoData();
+  var injected = false;
+  try {
+    injected = injectDemoData();
+  } catch(e) {
+    console.warn('示例数据注入失败:', e);
+  }
 
-  // 监听窗口大小变化，重新渲染地图
+  // 监听窗口大小变化，重新渲染地图（防抖）
+  var resizeTimer = null;
   window.addEventListener('resize', function() {
-    if (mapInstance && currentLogistics) {
-      setTimeout(function() { renderMapMarkers(); }, 300);
-    }
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      if (mapInstance && currentLogistics) {
+        try { mapInstance.invalidateSize(); } catch(e) {}
+        renderMapMarkers();
+      }
+    }, 300);
   });
 
   // 如果URL带有参数，自动查询
-  var urlParams = new URLSearchParams(window.location.search);
-  var autoPlanNo = urlParams.get('planNo');
+  var autoPlanNo = '';
+  try {
+    var urlParams = new URLSearchParams(window.location.search);
+    autoPlanNo = urlParams.get('planNo');
+  } catch(e) {}
 
   // 如果是首次注入或URL带参数，自动加载示例
   if (autoPlanNo) {
@@ -1394,7 +1439,7 @@ function injectDemoData() {
   } else if (injected) {
     // 首次注入示例数据后，自动填入并查询
     document.getElementById('orderSearchInput').value = DEMO_PLAN_NO;
-    setTimeout(function() { searchLogistics(); }, 600);
+    setTimeout(function() { searchLogistics(); }, 800);
   }
 })();
 </script>
