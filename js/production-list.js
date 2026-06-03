@@ -532,10 +532,29 @@ function openEditModal(id) {
             </datalist>\
             <p class="form-error-msg" id="editSteelTypeError">请输入钢材类型</p>\
           </div>\
-          <div>\
-            <label class="form-label">规格 <span class="text-red-500">*</span></label>\
-            <input type="text" id="editSpecification" class="form-input" value="' + escapeHtml(plan ? plan.specification : '') + '" maxlength="100" />\
-            <p class="form-error-msg" id="editSpecificationError">请输入规格</p>\
+          <div class="md:col-span-2">\
+            <label class="form-label">尺寸（长×宽×高） <span class="text-red-500">*</span></label>\
+            <div class="dimension-group">\
+              <div class="dimension-field">\
+                <input type="text" id="editDimLength" class="form-input dimension-input" placeholder="长" inputmode="numeric" autocomplete="off" />\
+                <span class="dimension-unit">mm</span>\
+              </div>\
+              <span class="dimension-sep">×</span>\
+              <div class="dimension-field">\
+                <input type="text" id="editDimWidth" class="form-input dimension-input" placeholder="宽" inputmode="numeric" autocomplete="off" />\
+                <span class="dimension-unit">mm</span>\
+              </div>\
+              <span class="dimension-sep">×</span>\
+              <div class="dimension-field">\
+                <input type="text" id="editDimHeight" class="form-input dimension-input" placeholder="高" inputmode="numeric" autocomplete="off" />\
+                <span class="dimension-unit">mm</span>\
+              </div>\
+            </div>\
+            <div class="dimension-preview" id="editDimensionPreview">\
+              💡 演示：输入 100、200、300 → 自动生成 <strong>100×200×300</strong>\
+            </div>\
+            <p class="form-error-msg" id="editDimensionError">请至少输入长、宽、高中的两个尺寸</p>\
+            <input type="hidden" id="editSpecification" value="' + escapeHtml(plan ? plan.specification : '') + '" />\
           </div>\
         </div>\
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">\
@@ -601,6 +620,9 @@ function openEditModal(id) {
       handleEditSubmit();
     });
   }
+
+  // 初始化编辑弹窗尺寸输入框
+  initEditDimensionInputs(plan);
 
   modal.classList.add('show');
 
@@ -675,7 +697,24 @@ function validateEditForm(data) {
 
   if (!data.planNo) { showFieldErrorById('editPlanNo'); valid = false; }
   if (!data.steelType) { showFieldErrorById('editSteelType'); valid = false; }
-  if (!data.specification) { showFieldErrorById('editSpecification'); valid = false; }
+
+  // 尺寸校验：至少输入两个维度
+  var dimLen = document.getElementById('editDimLength');
+  var dimWid = document.getElementById('editDimWidth');
+  var dimHei = document.getElementById('editDimHeight');
+  var filledCount = 0;
+  if (dimLen && dimLen.value.trim()) filledCount++;
+  if (dimWid && dimWid.value.trim()) filledCount++;
+  if (dimHei && dimHei.value.trim()) filledCount++;
+
+  if (filledCount < 2) {
+    if (dimLen && !dimLen.value.trim()) dimLen.classList.add('error');
+    if (dimWid && !dimWid.value.trim()) dimWid.classList.add('error');
+    if (dimHei && !dimHei.value.trim()) dimHei.classList.add('error');
+    var dimError = document.getElementById('editDimensionError');
+    if (dimError) dimError.classList.add('show');
+    valid = false;
+  }
 
   var qty = parseFloat(data.quantity);
   if (isNaN(qty) || qty <= 0) { showFieldErrorById('editQuantity'); valid = false; }
@@ -2727,5 +2766,89 @@ function toggleAlertPanel() {
   }
   if (icon) {
     icon.textContent = isAlertPanelExpanded ? '▲ 收起' : '▼ 展开';
+  }
+}
+
+// ==========================================
+// 编辑弹窗尺寸输入框：数字过滤 + 自动拼接 + 回填已有值
+// ==========================================
+
+/**
+ * 初始化编辑弹窗中的尺寸输入框
+ * @param {Object|null} plan - 计划对象（编辑模式时传入，新建时为 null）
+ */
+function initEditDimensionInputs(plan) {
+  var hiddenSpec = document.getElementById('editSpecification');
+  var preview = document.getElementById('editDimensionPreview');
+  var dimError = document.getElementById('editDimensionError');
+
+  // 如果是编辑模式，解析已有规格回填
+  if (plan && plan.specification) {
+    var parts = plan.specification.split('*');
+    var dimLen = document.getElementById('editDimLength');
+    var dimWid = document.getElementById('editDimWidth');
+    var dimHei = document.getElementById('editDimHeight');
+    if (dimLen && parts[0]) dimLen.value = parts[0].replace(/[^0-9]/g, '');
+    if (dimWid && parts[1]) dimWid.value = parts[1].replace(/[^0-9]/g, '');
+    if (dimHei && parts[2]) dimHei.value = parts[2].replace(/[^0-9]/g, '');
+  }
+
+  var dimIds = ['editDimLength', 'editDimWidth', 'editDimHeight'];
+
+  dimIds.forEach(function (id) {
+    var input = document.getElementById(id);
+    if (!input) return;
+
+    // 输入时只允许数字
+    input.addEventListener('input', function () {
+      var raw = input.value;
+      var filtered = raw.replace(/[^0-9]/g, '');
+      if (raw !== filtered) {
+        input.value = filtered;
+      }
+      updateEditDimensionSpec();
+    });
+
+    // 失焦清除前导零
+    input.addEventListener('blur', function () {
+      var val = input.value;
+      if (val.length > 1) {
+        input.value = String(parseInt(val, 10));
+      }
+      updateEditDimensionSpec();
+    });
+
+    // 清除错误态
+    input.addEventListener('focus', function () {
+      input.classList.remove('error');
+      if (dimError) dimError.classList.remove('show');
+    });
+  });
+
+  // 初始化预览
+  updateEditDimensionSpec();
+
+  function updateEditDimensionSpec() {
+    var len = (document.getElementById('editDimLength') || {}).value || '';
+    var wid = (document.getElementById('editDimWidth') || {}).value || '';
+    var hei = (document.getElementById('editDimHeight') || {}).value || '';
+
+    var parts = [len, wid, hei].filter(function (v) { return v !== ''; });
+    var spec = parts.join('*');
+
+    if (hiddenSpec) hiddenSpec.value = spec;
+
+    if (preview) {
+      if (parts.length >= 2) {
+        preview.innerHTML = '✅ 已生成规格：<strong>' + spec + '</strong>';
+        preview.className = 'dimension-preview dimension-preview-active';
+      } else if (parts.length === 1) {
+        preview.innerHTML = '💡 请输入更多尺寸（至少2个）';
+        preview.className = 'dimension-preview';
+      } else {
+        preview.innerHTML = '💡 演示：输入 100、200、300 → 自动生成 <strong>100×200×300</strong>';
+        preview.className = 'dimension-preview';
+      }
+    }
   }
 }

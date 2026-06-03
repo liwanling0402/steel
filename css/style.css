@@ -1817,6 +1817,26 @@ table {
   #alertPanel .flex.items-center.gap-2 {
     flex-wrap: wrap;
   }
+
+  /* 尺寸输入框组移动端 */
+  .dimension-group {
+    gap: 0.25rem;
+  }
+  .dimension-sep {
+    font-size: 1rem;
+  }
+  .dimension-input {
+    padding: 0.875rem 1.75rem 0.875rem 0.5rem !important;
+    font-size: 1rem !important;
+  }
+  .dimension-unit {
+    right: 0.5rem;
+    font-size: 0.6875rem;
+  }
+  .dimension-preview {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.5rem;
+  }
 }
 
 @media (min-width: 641px) {
@@ -1847,7 +1867,81 @@ table {
 }
 
 /* ==========================================
-   二十五、通用微调
+   二十五、尺寸输入框组 — 长×宽×高
+   ========================================== */
+.dimension-group {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.dimension-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.dimension-input {
+  padding-right: 2.25rem !important;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dimension-unit {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  letter-spacing: 0.02em;
+}
+
+.dimension-sep {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  line-height: 1;
+  user-select: none;
+}
+
+.dimension-preview {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-xs);
+  background: rgba(245,247,250,0.6);
+}
+
+.dimension-preview strong {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.dimension-preview-active {
+  color: var(--color-completed) !important;
+  background: var(--color-completed-bg) !important;
+}
+
+.dimension-preview-active strong {
+  color: var(--color-completed) !important;
+}
+
+/* 尺寸输入框的 error 态 */
+.dimension-input.error {
+  border-color: var(--color-cancelled);
+  box-shadow: 0 0 0 4px rgba(239,68,68,0.08);
+}
+
+/* ==========================================
+   二十七、通用微调
    ========================================== */
 /* 选中文字颜色 */
 ::selection {

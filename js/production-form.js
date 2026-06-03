@@ -61,17 +61,51 @@ function renderForm() {
           <p class="form-error-msg" id="steelTypeError">请输入钢材类型</p>\
         </div>\
         \
-        <!-- 规格 -->\
-        <div>\
-          <label class="form-label" for="specification">规格 <span class="text-red-500">*</span></label>\
-          <input\
-            type="text"\
-            id="specification"\
-            class="form-input"\
-            placeholder="例如: 2.0mm×1250mm×C"\
-            maxlength="100"\
-          />\
-          <p class="form-error-msg" id="specificationError">请输入规格</p>\
+        <!-- 尺寸（长×宽×高） -->\
+        <div class="md:col-span-2">\
+          <label class="form-label">尺寸（长×宽×高） <span class="text-red-500">*</span></label>\
+          <div class="dimension-group">\
+            <div class="dimension-field">\
+              <input\
+                type="text"\
+                id="dimLength"\
+                class="form-input dimension-input"\
+                placeholder="长"\
+                inputmode="numeric"\
+                autocomplete="off"\
+              />\
+              <span class="dimension-unit">mm</span>\
+            </div>\
+            <span class="dimension-sep">×</span>\
+            <div class="dimension-field">\
+              <input\
+                type="text"\
+                id="dimWidth"\
+                class="form-input dimension-input"\
+                placeholder="宽"\
+                inputmode="numeric"\
+                autocomplete="off"\
+              />\
+              <span class="dimension-unit">mm</span>\
+            </div>\
+            <span class="dimension-sep">×</span>\
+            <div class="dimension-field">\
+              <input\
+                type="text"\
+                id="dimHeight"\
+                class="form-input dimension-input"\
+                placeholder="高"\
+                inputmode="numeric"\
+                autocomplete="off"\
+              />\
+              <span class="dimension-unit">mm</span>\
+            </div>\
+          </div>\
+          <div class="dimension-preview" id="dimensionPreview">\
+            💡 演示：输入 100、200、300 → 自动生成 <strong>100×200×300</strong>\
+          </div>\
+          <p class="form-error-msg" id="dimensionError">请至少输入长、宽、高中的两个尺寸</p>\
+          <input type="hidden" id="specification" value="" />\
         </div>\
         \
         <!-- 数量 -->\
@@ -208,6 +242,9 @@ function bindFormEvents() {
     });
   }
 
+  // ===== 尺寸输入框：只允许数字 + 自动拼接 =====
+  bindDimensionInputs();
+
   // 表单提交
   form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -228,6 +265,78 @@ function bindFormEvents() {
       if (errorEl) errorEl.classList.remove('show');
     });
   });
+}
+
+/**
+ * 绑定尺寸输入框：数字过滤 + 自动拼接规格
+ */
+function bindDimensionInputs() {
+  var dimIds = ['dimLength', 'dimWidth', 'dimHeight'];
+  var hiddenSpec = document.getElementById('specification');
+  var preview = document.getElementById('dimensionPreview');
+  var dimError = document.getElementById('dimensionError');
+
+  dimIds.forEach(function (id) {
+    var input = document.getElementById(id);
+    if (!input) return;
+
+    // 输入时只允许数字，过滤符号和文字
+    input.addEventListener('input', function () {
+      var raw = input.value;
+      // 移除所有非数字字符
+      var filtered = raw.replace(/[^0-9]/g, '');
+      if (raw !== filtered) {
+        input.value = filtered;
+      }
+      // 实时拼接到隐藏字段
+      updateDimensionSpec();
+    });
+
+    // 失焦时清除前导零（但保留"0"）
+    input.addEventListener('blur', function () {
+      var val = input.value;
+      if (val.length > 1) {
+        input.value = String(parseInt(val, 10));
+      }
+      updateDimensionSpec();
+    });
+
+    // 清除尺寸错误态
+    input.addEventListener('focus', function () {
+      input.classList.remove('error');
+      if (dimError) dimError.classList.remove('show');
+    });
+  });
+
+  /**
+   * 拼接三个尺寸为规格字符串：长*宽*高
+   * 至少输入两个维度才生效
+   */
+  function updateDimensionSpec() {
+    var len = (document.getElementById('dimLength') || {}).value || '';
+    var wid = (document.getElementById('dimWidth') || {}).value || '';
+    var hei = (document.getElementById('dimHeight') || {}).value || '';
+
+    // 拼接：只拼接非空值
+    var parts = [len, wid, hei].filter(function (v) { return v !== ''; });
+    var spec = parts.join('*');
+
+    if (hiddenSpec) hiddenSpec.value = spec;
+
+    // 更新预览提示
+    if (preview) {
+      if (parts.length >= 2) {
+        preview.innerHTML = '✅ 已生成规格：<strong>' + spec + '</strong>';
+        preview.className = 'dimension-preview dimension-preview-active';
+      } else if (parts.length === 1) {
+        preview.innerHTML = '💡 请输入更多尺寸（至少2个）';
+        preview.className = 'dimension-preview';
+      } else {
+        preview.innerHTML = '💡 演示：输入 100、200、300 → 自动生成 <strong>100×200×300</strong>';
+        preview.className = 'dimension-preview';
+      }
+    }
+  }
 }
 
 /**
@@ -296,9 +405,21 @@ function validateForm(data) {
     valid = false;
   }
 
-  // 规格
-  if (!data.specification) {
-    showFieldError('specification');
+  // 尺寸校验：至少输入两个维度
+  var dimLen = document.getElementById('dimLength');
+  var dimWid = document.getElementById('dimWidth');
+  var dimHei = document.getElementById('dimHeight');
+  var filledCount = 0;
+  if (dimLen && dimLen.value.trim()) filledCount++;
+  if (dimWid && dimWid.value.trim()) filledCount++;
+  if (dimHei && dimHei.value.trim()) filledCount++;
+
+  if (filledCount < 2) {
+    if (dimLen && !dimLen.value.trim()) dimLen.classList.add('error');
+    if (dimWid && !dimWid.value.trim()) dimWid.classList.add('error');
+    if (dimHei && !dimHei.value.trim()) dimHei.classList.add('error');
+    var dimError = document.getElementById('dimensionError');
+    if (dimError) dimError.classList.add('show');
     valid = false;
   }
 
@@ -345,6 +466,15 @@ function resetForm() {
   // 重置备注计数
   var remarkCount = document.getElementById('remarkCount');
   if (remarkCount) remarkCount.textContent = '0';
+  // 重置尺寸预览
+  var preview = document.getElementById('dimensionPreview');
+  if (preview) {
+    preview.innerHTML = '💡 演示：输入 100、200、300 → 自动生成 <strong>100×200×300</strong>';
+    preview.className = 'dimension-preview';
+  }
+  // 清空隐藏规格字段
+  var hiddenSpec = document.getElementById('specification');
+  if (hiddenSpec) hiddenSpec.value = '';
 }
 
 /**
