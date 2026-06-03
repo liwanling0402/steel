@@ -1977,3 +1977,77 @@ input, textarea, select {
     font-size: 0.9375rem !important;
   }
 }
+
+/* ==========================================
+   二十八、移动端底部导航栏
+   ========================================== */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  background: var(--bg-header);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 -2px 20px rgba(15,23,32,0.3);
+  padding: 6px 8px calc(6px + var(--safe-bottom, 0px));
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.mbn-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 12px;
+  min-width: 64px;
+  text-decoration: none;
+}
+
+.mbn-item:active {
+  transform: scale(0.93);
+}
+
+.mbn-item.active {
+  color: #ffffff;
+  background: rgba(59,130,246,0.3);
+}
+
+.mbn-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.mbn-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* 桌面端隐藏底部导航 */
+@media (min-width: 641px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* 移动端给主体内容底部留出空间 */
+@media (max-width: 640px) {
+  .app-main {
+    padding-bottom: calc(80px + var(--safe-bottom, 0px)) !important;
+  }
+  /* 客服浮动按钮避开底部导航 */
+  .cs-float-btn {
+    bottom: calc(80px + var(--safe-bottom, 0px) + 8px) !important;
+  }
+}

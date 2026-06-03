@@ -61,7 +61,7 @@ function switchPage(page) {
 }
 
 /**
- * 更新导航按钮激活状态
+ * 更新导航按钮激活状态（含桌面端顶部导航和移动端底部导航）
  */
 function updateNavActive(page) {
   var navBtns = document.querySelectorAll('.nav-btn');
@@ -70,6 +70,15 @@ function updateNavActive(page) {
       btn.classList.add('active');
     } else {
       btn.classList.remove('active');
+    }
+  });
+  // 同步更新底部导航栏
+  var mbnItems = document.querySelectorAll('.mbn-item');
+  mbnItems.forEach(function (item) {
+    if (item.getAttribute('data-page') === page) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
     }
   });
 }

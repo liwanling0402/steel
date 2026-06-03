@@ -293,6 +293,22 @@
     </div>
   </div>
 
+  <!-- ========== 移动端底部导航栏 ========== -->
+  <nav class="mobile-bottom-nav" id="mobileBottomNav">
+    <button class="mbn-item active" data-page="form" onclick="switchPage('form')">
+      <span class="mbn-icon">📝</span>
+      <span class="mbn-label">计划录入</span>
+    </button>
+    <button class="mbn-item" data-page="list" onclick="switchPage('list')">
+      <span class="mbn-icon">📋</span>
+      <span class="mbn-label">计划列表</span>
+    </button>
+    <a href="logistics.html" class="mbn-item" style="text-decoration:none;">
+      <span class="mbn-icon">🚚</span>
+      <span class="mbn-label">物流跟进</span>
+    </a>
+  </nav>
+
   <!-- ========== PWA Service Worker 注册 ========== -->
   <script>
     if ('serviceWorker' in navigator) {
