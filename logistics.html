@@ -14,13 +14,12 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192x192.png">
 
-  <!-- 核心样式 -->
+  <!-- 核心样式（复用主站体系） -->
   <link rel="stylesheet" href="css/style.css">
 
   <!-- Leaflet + OpenStreetMap（完全免费，无需 AK） -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-  </script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
   <style>
     /* ==========================================
@@ -227,7 +226,7 @@
       align-items: center;
       justify-content: space-between;
     }
-    .logistics-map-header h3 { font-size: 0.875rem; font-weight: 700; color: #1e2533; }
+    .logistics-map-header h3 { font-size: 0.875rem; font-weight: 700; color: #1e2533; margin: 0; }
     .logistics-map-container {
       width: 100%;
       height: 400px;
@@ -353,7 +352,7 @@
       justify-content: space-between;
       flex-shrink: 0;
     }
-    .logistics-timeline-header h3 { font-size: 0.875rem; font-weight: 700; color: #1e2533; }
+    .logistics-timeline-header h3 { font-size: 0.875rem; font-weight: 700; color: #1e2533; margin: 0; }
     .logistics-timeline-body {
       flex: 1;
       overflow-y: auto;
@@ -452,10 +451,25 @@
       to { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
 
+    /* 地图脉冲动画 */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.5); opacity: 1; }
+      100% { transform: scale(2.5); opacity: 0; }
+    }
+    .pulse-marker {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(37,99,235,0.3);
+      pointer-events: none;
+      animation: pulse-ring 2s ease-out infinite;
+    }
+
     /* 移动端响应式 */
     @media (max-width: 768px) {
       .logistics-content { grid-template-columns: 1fr; }
-      .logistics-map-container { height: 300px; }
+      .logistics-map-container { height: 280px; }
       .logistics-search-row { flex-direction: column; }
       .logistics-search-field { min-width: 0; width: 100%; }
       .logistics-search-btn { width: 100%; justify-content: center; }
@@ -464,6 +478,8 @@
       .logistics-timeline-card { max-height: none; }
       .logistics-main { padding: 0.75rem; }
       .logistics-order-info { flex-direction: column; gap: 0.25rem; }
+      .logistics-desc-row { flex-direction: column; }
+      .logistics-desc-row .logistics-coord-btn { width: 100%; justify-content: center; }
     }
   </style>
 </head>
@@ -513,7 +529,7 @@
           <h3>📍 实时物流地图</h3>
           <span style="font-size:0.75rem;color:#a0aec0;" id="mapUpdateTime"></span>
         </div>
-        <div class="logistics-map-container" id="baiduMap"></div>
+        <div class="logistics-map-container" id="logisticsMap"></div>
         <!-- 坐标编辑 -->
         <div class="logistics-coord-edit">
           <div class="logistics-coord-field">
@@ -676,7 +692,7 @@ var iconFactory = {
 
 function initMap() {
   if (mapInstance) return;
-  var container = document.getElementById('baiduMap');
+  var container = document.getElementById('logisticsMap');
   if (!container || container.offsetWidth === 0) return;
   if (container._mapInitializing) return;
   container._mapInitializing = true;
@@ -690,7 +706,7 @@ function initMap() {
       return;
     }
 
-    mapInstance = L.map('baiduMap', {
+    mapInstance = L.map('logisticsMap', {
       center: [39.634, 118.180],
       zoom: 6,
       zoomControl: true,
@@ -735,7 +751,7 @@ function renderMapMarkers() {
     var originLabel = L.marker([origin.lat, origin.lng], {
       icon: L.divIcon({
         className: '',
-        html: '<div style="background:rgba(26,35,50,0.9);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;">🏭 ' + (origin.name || '厂区') + '</div>',
+        html: '<div style="background:rgba(26,35,50,0.9);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;">🏭 ' + escapeHtml(origin.name || '厂区') + '</div>',
         iconSize: [140, 24], iconAnchor: [70, -10]
       })
     }).addTo(mapInstance);
@@ -748,7 +764,7 @@ function renderMapMarkers() {
     var destLabel = L.marker([dest.lat, dest.lng], {
       icon: L.divIcon({
         className: '',
-        html: '<div style="background:rgba(16,185,129,0.9);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;">📦 ' + (dest.name || '目的地') + '</div>',
+        html: '<div style="background:rgba(16,185,129,0.9);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;">📦 ' + escapeHtml(dest.name || '目的地') + '</div>',
         iconSize: [140, 24], iconAnchor: [70, -10]
       })
     }).addTo(mapInstance);
@@ -887,6 +903,7 @@ function showOrderInfo(plan) {
                     plan.settleStatus === 'partial' ? '部分结算' : '未结算';
   var settleColor = plan.settleStatus === 'settled' ? '#10b981' :
                     plan.settleStatus === 'partial' ? '#f59e0b' : '#ef4444';
+  // 已结算订单允许编辑物流，未结算/部分结算锁定
   var isSettled = plan.settleStatus === 'settled';
 
   area.innerHTML =
@@ -902,12 +919,13 @@ function showOrderInfo(plan) {
     '🔒 该订单尚未完成财务结算，无法修改物流数据。请在 <strong>财务对账</strong> 中完成结算后操作。' +
     '</div>');
 
-  // 更新编辑按钮状态
+  // 更新编辑按钮状态：已结算才启用
   updateEditControlsState(isSettled);
 }
 
 /**
  * 根据结算状态启用/禁用编辑控件
+ * isSettled=true 时启用，false 时禁用
  */
 function updateEditControlsState(isSettled) {
   var latInput = document.getElementById('editLat');
@@ -921,16 +939,6 @@ function updateEditControlsState(isSettled) {
   if (descInput) descInput.disabled = !isSettled;
   if (updateBtn) updateBtn.disabled = !isSettled;
   if (addNodeBtn) addNodeBtn.disabled = !isSettled;
-
-  if (!isSettled) {
-    if (latInput) latInput.style.cursor = 'not-allowed';
-    if (lngInput) lngInput.style.cursor = 'not-allowed';
-    if (descInput) descInput.style.cursor = 'not-allowed';
-  } else {
-    if (latInput) latInput.style.cursor = '';
-    if (lngInput) lngInput.style.cursor = '';
-    if (descInput) descInput.style.cursor = '';
-  }
 }
 
 // ==========================================
@@ -983,8 +991,8 @@ function searchLogistics() {
   document.getElementById('editLat').value = logistics.current.lat || '';
   document.getElementById('editLng').value = logistics.current.lng || '';
 
-  // 初始化地图
-  setTimeout(function() { initMap(); }, 200);
+  // 初始化地图（延迟以确保 DOM 可见）
+  setTimeout(function() { initMap(); }, 300);
 
   // 渲染时间轴
   renderTimeline();
@@ -1155,7 +1163,7 @@ function showToast(msg, type) {
 // 演示数据注入（首次访问自动生成）
 // ==========================================
 var DEMO_PLAN_NO = 'SC20260603001';
-var DEMO_INJECTED_KEY = 'steel_logistics_demo_injected_v3';
+var DEMO_INJECTED_KEY = 'steel_logistics_demo_injected_v4';
 
 function injectDemoData() {
   // 检查是否已注入
@@ -1201,14 +1209,13 @@ function injectDemoData() {
 
   // --- 2. 创建完整物流数据 ---
   // 模拟时间线：从2026-06-03 08:20装车出发，跨越3天
-  var day1_820 = new Date(2026, 5, 3, 8, 20, 0);   // 2026-06-03 08:20
+  var day1_820 = new Date(2026, 5, 3, 8, 20, 0);
   var day1_1030 = new Date(2026, 5, 3, 10, 30, 0);
   var day1_1630 = new Date(2026, 5, 3, 16, 30, 0);
   var day2_0620 = new Date(2026, 5, 4, 6, 20, 0);
   var day2_1400 = new Date(2026, 5, 4, 14, 0, 0);
   var day3_0820 = new Date(2026, 5, 5, 8, 20, 0);
   var day3_1500 = new Date(2026, 5, 5, 15, 0, 0);
-  var day3_1800 = new Date(2026, 5, 5, 18, 0, 0);
 
   var logisticsData = getLogisticsData();
 
@@ -1245,7 +1252,7 @@ function injectDemoData() {
       {
         type: 'departed',
         title: '货物已装车出厂',
-        desc: '42吨Q345B低合金结构钢完成装车，车牌号：冀B·9C582挂，司机：赵师傅 138-4567-8901。已通过出厂地磅，净重42.05吨，误差在允许范围内。',
+        desc: '42吨Q345B低合金结构钢完成装车，车牌号：冀B·9C582挂，司机：赵师傅 138-4567-8901。已通过出厂地磅，净重42.05吨。',
         location: '唐山钢铁厂区仓库',
         time: day1_820.toISOString(),
         lat: 39.634,
@@ -1254,7 +1261,7 @@ function injectDemoData() {
       {
         type: 'transit',
         title: '途经天津，进入G18荣乌高速',
-        desc: '运输车辆已通过天津收费站，沿G18荣乌高速向南行驶。当前车速约80km/h，天气晴朗，路况良好。预计傍晚抵达河北山东交界处。',
+        desc: '运输车辆已通过天津收费站，沿G18荣乌高速向南行驶。当前车速约80km/h，天气晴朗，路况良好。',
         location: 'G18荣乌高速天津段',
         time: day1_1030.toISOString(),
         lat: 39.125,
@@ -1320,7 +1327,22 @@ function injectDemoData() {
 }
 
 // ==========================================
-// 页面初始化（加固版）
+// PWA Service Worker 注册
+// ==========================================
+(function registerSW() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('sw.js', { scope: '/' }).then(function(reg) {
+        console.log('[PWA-Logistics] Service Worker registered:', reg.scope);
+      }).catch(function(err) {
+        console.log('[PWA-Logistics] SW registration failed:', err);
+      });
+    });
+  }
+})();
+
+// ==========================================
+// 页面初始化
 // ==========================================
 (function init() {
   // 自动注入示例数据
