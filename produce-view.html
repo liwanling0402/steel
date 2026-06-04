@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a2332">
+  <meta name="apple-mobile-web-app-title" content="Steel 生产视图">
+  <title>可视化生产 - Steel 钢材加工</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <link rel="icon" href="icons/icon-192x192.png">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ===== CSS Reset & Variables ===== */
+    *,::before,::after{box-sizing:border-box;border-width:0;border-style:solid}
+    html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4}
+    body{margin:0;line-height:inherit}
+    h1,h2,h3,h4,p{margin:0}
+    button,input,select,textarea{font-family:inherit;font-size:100%;line-height:inherit;color:inherit;margin:0;padding:0}
+    button{cursor:pointer}
+    :root {
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --bg: #f0f2f5;
+      --header-bg: linear-gradient(135deg, #1a2332 0%, #2d4054 100%);
+      --card-bg: #fff;
+      --card-shadow: 0 2px 8px rgba(15,23,32,0.06), 0 0 0 1px rgba(15,23,32,0.04);
+      --text: #1e2533;
+      --text-2: #4a5568;
+      --text-3: #8896a8;
+      --accent: #2563eb;
+      --accent-light: #3b82f6;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --forge: #f97316;
+      --furnace: #dc2626;
+      --semi: #8b5cf6;
+      --product: #06b6d4;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* ===== Tailwind精简核心 ===== */
+    .flex{display:flex}.hidden{display:none}.grid{display:grid}.block{display:block}.inline-flex{display:inline-flex}
+    .flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.flex-1{flex:1 1 0%}.flex-shrink-0{flex-shrink:0}
+    .items-center{align-items:center}.items-start{align-items:flex-start}.items-end{align-items:end}
+    .justify-center{justify-content:center}.justify-between{justify-content:space-between}.justify-end{justify-content:flex-end}
+    .gap-1{gap:.25rem}.gap-2{gap:.5rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}.gap-5{gap:1.25rem}.gap-6{gap:1.5rem}
+    .p-1{padding:.25rem}.p-2{padding:.5rem}.p-3{padding:.75rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}
+    .px-2{padding-left:.5rem;padding-right:.5rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}
+    .py-1{padding-top:.25rem;padding-bottom:.25rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}
+    .mb-1{margin-bottom:.25rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.mb-5{margin-bottom:1.25rem}.mb-6{margin-bottom:1.5rem}
+    .mt-1{margin-top:.25rem}.mt-2{margin-top:.5rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.mt-6{margin-top:1.5rem}
+    .ml-1{margin-left:.25rem}.ml-2{margin-left:.5rem}.mr-2{margin-right:.5rem}.mx-auto{margin-left:auto;margin-right:auto}
+    .w-full{width:100%}.h-full{height:100%}.min-w-0{min-width:0}
+    .text-xs{font-size:.75rem;line-height:1rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}
+    .font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}
+    .text-white{color:#fff}.text-gray-400{color:#9ca3af}.text-gray-500{color:#6b7280}.text-gray-600{color:#4b5563}
+    .text-center{text-align:center}.text-right{text-align:right}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .rounded-lg{border-radius:.5rem}.rounded-xl{border-radius:.75rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}
+    .overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.overflow-x-auto{overflow-x:auto}
+    .relative{position:relative}.absolute{position:absolute}.fixed{position:fixed}.sticky{position:sticky}
+    .cursor-pointer{cursor:pointer}.select-none{user-select:none}
+    .transition-all{transition:all .2s ease}.transition-transform{transition:transform .2s ease}
+    .opacity-50{opacity:.5}.opacity-80{opacity:.8}
+    @media(min-width:768px){.md\:flex{display:flex!important}.md\:hidden{display:none!important}}
+    @media(min-width:1024px){.lg\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))!important}.lg\:col-span-2{grid-column:span 2/span 2!important}}
+
+    /* ===== 全局样式 ===== */
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      padding-top: 64px;
+      padding-bottom: calc(80px + var(--safe-bottom));
+    }
+
+    /* ===== 顶部导航 ===== */
+    .app-header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: var(--header-bg); color: #fff;
+      padding: 0 16px; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-icon { font-size: 28px; }
+    .header-title { font-size: 18px; font-weight: 700; line-height: 1.2; }
+    .header-sub { font-size: 11px; opacity: .65; }
+    .header-nav { display: flex; gap: 4px; }
+    .header-nav a, .header-nav button {
+      color: rgba(255,255,255,.7); background: none; border: none;
+      padding: 8px 16px; border-radius: 12px; font-size: 14px;
+      font-weight: 500; text-decoration: none; transition: all .15s;
+    }
+    .header-nav a:hover, .header-nav button:hover { color: #fff; background: rgba(255,255,255,.1); }
+    .header-nav .active { color: #fff; background: rgba(255,255,255,.15); font-weight: 600; }
+    .back-btn {
+      color: rgba(255,255,255,.8); background: rgba(255,255,255,.08);
+      border: none; padding: 8px 14px; border-radius: 10px; font-size: 14px;
+      font-weight: 500; cursor: pointer; transition: all .15s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,.16); color: #fff; }
+
+    /* ===== 主内容区 ===== */
+    .main-content { max-width: 1280px; margin: 0 auto; padding: 16px; }
+
+    /* ===== 区域卡片 ===== */
+    .zone-card {
+      background: var(--card-bg); border-radius: 16px;
+      box-shadow: var(--card-shadow); overflow: hidden;
+    }
+    .zone-header {
+      padding: 14px 18px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid #f0f0f0; font-weight: 600; font-size: 15px;
+    }
+    .zone-header .zone-icon { font-size: 22px; }
+    .zone-header .zone-badge {
+      font-size: 11px; padding: 3px 10px; border-radius: 20px;
+      font-weight: 600; margin-left: auto;
+    }
+    .zone-body { padding: 16px; }
+
+    /* ===== 库存原材料网格 ===== */
+    .material-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px; min-height: 60px;
+    }
+    .material-item {
+      background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+      border: 2px solid #e2e8f0; border-radius: 12px;
+      padding: 12px; cursor: grab; user-select: none;
+      transition: all .2s; position: relative;
+    }
+    .material-item:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(37,99,235,.12); transform: translateY(-1px); }
+    .material-item:active { cursor: grabbing; }
+    .material-item.dragging { opacity: .4; transform: scale(.95); }
+    .material-item .mat-icon { font-size: 28px; margin-bottom: 4px; }
+    .material-item .mat-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .material-item .mat-stock { font-size: 11px; color: var(--text-3); }
+    .material-item .mat-unit { font-size: 10px; color: var(--text-3); margin-left: 2px; }
+    .material-item .mat-qty { position: absolute; top: 8px; right: 10px; font-size: 18px; font-weight: 700; color: var(--accent); }
+    .material-item.low-stock { border-color: #fecaca; background: linear-gradient(135deg, #fef2f2, #fff5f5); }
+    .material-item.low-stock .mat-qty { color: var(--danger); }
+    .material-item.used { opacity: .35; pointer-events: none; border-style: dashed; }
+
+    /* ===== 配料台 (Drop Zone) ===== */
+    .mix-station {
+      background: linear-gradient(135deg, #faf5ff, #f3e8ff);
+      border: 2px dashed #c4b5fd; border-radius: 16px;
+      padding: 16px; min-height: 120px;
+      transition: all .3s;
+    }
+    .mix-station.drag-over { border-color: var(--accent); background: #eff6ff; box-shadow: 0 0 0 4px rgba(37,99,235,.12); }
+    .mix-station .mix-hint { text-align: center; color: #a78bfa; padding: 24px 0; font-size: 14px; }
+    .mix-station .mix-items { display: flex; flex-wrap: wrap; gap: 8px; }
+    .mix-chip {
+      display: flex; align-items: center; gap: 6px;
+      background: #fff; border: 2px solid var(--accent); border-radius: 20px;
+      padding: 6px 12px 6px 8px; font-size: 13px; font-weight: 500;
+      animation: chipIn .3s ease-out;
+    }
+    .mix-chip .chip-remove {
+      width: 20px; height: 20px; border-radius: 50%; background: #fee2e2;
+      color: var(--danger); font-size: 14px; display: flex; align-items: center;
+      justify-content: center; cursor: pointer; border: none; line-height: 1;
+    }
+    .mix-chip .chip-remove:hover { background: #fecaca; }
+    @keyframes chipIn { from { opacity: 0; transform: scale(.5) translateY(-10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+    /* ===== 融合按钮 ===== */
+    .btn-fuse {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 14px; border: none; border-radius: 14px;
+      font-size: 16px; font-weight: 700; color: #fff;
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      cursor: pointer; transition: all .3s; margin-top: 12px;
+      position: relative; overflow: hidden;
+    }
+    .btn-fuse:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(139,92,246,.3); }
+    .btn-fuse:active { transform: scale(.97); }
+    .btn-fuse:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    .btn-fuse.fusing { pointer-events: none; }
+    .btn-fuse.fusing::after {
+      content: ''; position: absolute; top: 0; left: -100%;
+      width: 300%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
+      animation: fuseShine .8s ease-in-out;
+    }
+    @keyframes fuseShine { to { left: 100%; } }
+
+    /* ===== 半成品区 ===== */
+    .semi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; min-height: 60px; }
+    .semi-item {
+      background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+      border: 2px solid #c4b5fd; border-radius: 12px;
+      padding: 14px; cursor: pointer; transition: all .25s; position: relative;
+    }
+    .semi-item:hover { border-color: #8b5cf6; box-shadow: 0 2px 12px rgba(139,92,246,.15); }
+    .semi-item.selected { border-color: var(--forge); background: linear-gradient(135deg, #fff7ed, #ffedd5); box-shadow: 0 0 0 3px rgba(249,115,22,.2); }
+    .semi-item .semi-icon { font-size: 32px; margin-bottom: 4px; }
+    .semi-item .semi-name { font-size: 13px; font-weight: 600; }
+    .semi-item .semi-materials { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+    .semi-item .semi-status { position: absolute; top: 10px; right: 10px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+    .semi-item .semi-status.ready { background: #dbeafe; color: var(--accent); }
+    .semi-item .semi-status.forged { background: #ffedd5; color: var(--forge); }
+    .semi-item.forging { animation: forging .6s ease-in-out; }
+    @keyframes forging { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05);filter:brightness(1.3)} }
+
+    /* ===== 锻造按钮 ===== */
+    .btn-forge {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 14px; border: none; border-radius: 14px;
+      font-size: 16px; font-weight: 700; color: #fff;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      cursor: pointer; transition: all .3s; margin-top: 12px;
+    }
+    .btn-forge:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(249,115,22,.3); }
+    .btn-forge:active { transform: scale(.97); }
+    .btn-forge:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ===== 熔炉区 ===== */
+    .furnace-zone {
+      background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f0f1a 100%);
+      border-radius: 16px; padding: 24px; color: #fff; text-align: center;
+      min-height: 180px; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; position: relative; overflow: hidden;
+      border: 2px solid #334155;
+    }
+    .furnace-zone::before {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 40%;
+      background: radial-gradient(ellipse at center, rgba(249,115,22,.3), transparent 70%);
+      pointer-events: none;
+    }
+    .furnace-fire {
+      font-size: 60px; animation: firePulse 1.5s ease-in-out infinite;
+    }
+    @keyframes firePulse { 0%,100%{transform:scale(1);filter:brightness(1)} 50%{transform:scale(1.1);filter:brightness(1.4)} }
+    .furnace-text { font-size: 15px; color: rgba(255,255,255,.6); margin-top: 8px; }
+    .furnace-slot {
+      background: rgba(255,255,255,.06); border: 2px dashed rgba(255,255,255,.15);
+      border-radius: 12px; padding: 14px 20px; margin-top: 12px; font-size: 14px;
+      cursor: pointer; transition: all .2s;
+    }
+    .furnace-slot:hover { border-color: rgba(255,255,255,.3); background: rgba(255,255,255,.1); }
+    .furnace-slot.has-item { border-style: solid; border-color: #f97316; background: rgba(249,115,22,.1); }
+    .furnace-slot .slot-label { color: rgba(255,255,255,.35); font-size: 11px; }
+    .btn-smelt {
+      margin-top: 14px; padding: 12px 32px; border: none; border-radius: 12px;
+      font-size: 15px; font-weight: 700; color: #fff;
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      cursor: pointer; transition: all .3s;
+    }
+    .btn-smelt:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(220,38,38,.4); }
+    .btn-smelt:active { transform: scale(.95); }
+    .btn-smelt:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-smelt.smelting { animation: smeltPulse 1s ease-in-out infinite; }
+    @keyframes smeltPulse { 0%,100%{box-shadow:0 0 10px rgba(239,68,68,.5)} 50%{box-shadow:0 0 30px rgba(239,68,68,.8),0 0 60px rgba(249,115,22,.5)} }
+
+    /* ===== 成品区 ===== */
+    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; min-height: 60px; }
+    .product-item {
+      background: linear-gradient(135deg, #ecfeff, #cffafe);
+      border: 2px solid #67e8f9; border-radius: 12px;
+      padding: 14px; text-align: center; animation: productIn .5s ease-out;
+      position: relative;
+    }
+    @keyframes productIn { from { opacity: 0; transform: scale(0) rotate(-10deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+    .product-item .prod-icon { font-size: 36px; margin-bottom: 4px; }
+    .product-item .prod-name { font-size: 14px; font-weight: 700; color: #0e7490; }
+    .product-item .prod-detail { font-size: 11px; color: #0891b2; margin-top: 2px; }
+    .product-item .prod-badge {
+      position: absolute; top: 8px; right: 8px; font-size: 10px; padding: 2px 8px;
+      border-radius: 10px; font-weight: 600;
+      background: #cffafe; color: #0e7490;
+    }
+
+    /* ===== 图表区 ===== */
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media(max-width:767px) { .charts-row { grid-template-columns: 1fr; } }
+    .chart-box { background: var(--card-bg); border-radius: 14px; padding: 14px; box-shadow: var(--card-shadow); }
+    .chart-box canvas { max-height: 220px; }
+    .chart-title { font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 8px; }
+
+    /* ===== 统计面板 ===== */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+    @media(max-width:767px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+    .stat-card {
+      background: var(--card-bg); border-radius: 14px; padding: 14px 16px;
+      box-shadow: var(--card-shadow); transition: all .2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(15,23,32,.1); }
+    .stat-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .stat-value { font-size: 24px; font-weight: 700; }
+    .stat-change { font-size: 11px; margin-top: 2px; }
+    .stat-change.up { color: var(--success); }
+    .stat-change.down { color: var(--danger); }
+
+    /* ===== Toast 提示 ===== */
+    .toast {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 999;
+      padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 600;
+      color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.2);
+      animation: toastIn .3s ease-out, toastOut .3s ease-in 2s forwards;
+      pointer-events: none;
+    }
+    .toast.success { background: var(--success); }
+    .toast.warning { background: var(--warning); color: #000; }
+    .toast.error { background: var(--danger); }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+    @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
+
+    /* ===== 粒子效果 ===== */
+    .particle { position: fixed; pointer-events: none; z-index: 998; font-size: 20px; animation: particleFly .8s ease-out forwards; }
+    @keyframes particleFly { 0%{opacity:1;transform:translate(0,0) scale(1)} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0)} }
+
+    /* ===== 进度条 ===== */
+    .progress-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width .6s ease; }
+    .progress-fill.blue { background: var(--accent); }
+    .progress-fill.orange { background: var(--forge); }
+    .progress-fill.green { background: var(--success); }
+    .progress-fill.purple { background: #8b5cf6; }
+
+    /* ===== 移动端适配 ===== */
+    .mobile-tabs { display: none; gap: 4px; margin-bottom: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .mobile-tabs button {
+      flex-shrink: 0; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+      border: 1px solid #e2e8f0; background: #fff; color: var(--text-2);
+      white-space: nowrap; transition: all .15s;
+    }
+    .mobile-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    @media(max-width:767px) { .mobile-tabs { display: flex; } }
+
+    /* ===== 空状态 ===== */
+    .empty-state { text-align: center; padding: 32px 16px; color: var(--text-3); }
+    .empty-state .empty-icon { font-size: 40px; margin-bottom: 8px; opacity: .5; }
+    .empty-state .empty-text { font-size: 13px; }
+
+    /* ===== 数量调整 ===== */
+    .qty-adjust { display: flex; align-items: center; gap: 6px; }
+    .qty-adjust button {
+      width: 28px; height: 28px; border-radius: 50%; border: 1px solid #e2e8f0;
+      background: #fff; font-size: 16px; display: flex; align-items: center;
+      justify-content: center; cursor: pointer; transition: all .15s; line-height: 1;
+    }
+    .qty-adjust button:hover { background: #f1f5f9; }
+    .qty-adjust .qty-val { font-size: 15px; font-weight: 700; min-width: 24px; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <!-- ===== 顶部导航 ===== -->
+  <header class="app-header">
+    <div class="header-left">
+      <button class="back-btn" onclick="window.location.href='index.html'">← 返回</button>
+      <span class="header-icon">⚙️</span>
+      <div>
+        <div class="header-title">可视化生产</div>
+        <div class="header-sub">拖拽配料 · 融合锻造 · 熔炉产出</div>
+      </div>
+    </div>
+    <nav class="header-nav md:flex" style="display:none">
+      <a href="index.html">📝 计划录入</a>
+      <a href="index.html?page=list">📋 计划列表</a>
+      <a href="logistics.html">🚚 物流跟进</a>
+      <button class="active">⚙️ 可视化生产</button>
+    </nav>
+  </header>
+
+  <!-- ===== 移动端快捷标签 ===== -->
+  <div class="main-content">
+    <div class="mobile-tabs" id="mobileTabs">
+      <button class="active" data-zone="materials">🧱 原材料</button>
+      <button data-zone="mix">🧪 配料台</button>
+      <button data-zone="semi">🔨 半成品</button>
+      <button data-zone="furnace">🔥 熔炉</button>
+      <button data-zone="products">📦 成品</button>
+    </div>
+
+    <!-- ===== 统计面板 ===== -->
+    <div class="stats-row" id="statsPanel">
+      <div class="stat-card"><div class="stat-label">📦 原材料库存</div><div class="stat-value" style="color:var(--accent)" id="statMaterials">0</div><div class="stat-change">种</div></div>
+      <div class="stat-card"><div class="stat-label">🔨 半成品</div><div class="stat-value" style="color:var(--forge)" id="statSemi">0</div><div class="stat-change">件</div></div>
+      <div class="stat-card"><div class="stat-label">📦 成品产出</div><div class="stat-value" style="color:var(--success)" id="statProducts">0</div><div class="stat-change">件</div></div>
+      <div class="stat-card"><div class="stat-label">⚡ 今日生产</div><div class="stat-value" style="color:#8b5cf6" id="statToday">0</div><div class="stat-change">次操作</div></div>
+    </div>
+
+    <!-- ===== 主生产流程 ===== -->
+    <div class="grid gap-4" style="grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto;" id="mainGrid">
+      <!-- 左上：原材料库存 + 拖拽区 -->
+      <div class="zone-card" id="zoneMaterials" style="grid-row:1/3;">
+        <div class="zone-header">
+          <span class="zone-icon">🧱</span> 原材料库存
+          <span class="zone-badge" style="background:#dbeafe;color:var(--accent)" id="matCountBadge">0种</span>
+        </div>
+        <div class="zone-body">
+          <div class="material-grid" id="materialGrid">
+            <div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">暂无原材料库存<br>请先录入生产计划</div></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:10px;text-align:center;">💡 拖拽原材料到下方配料台</div>
+        </div>
+      </div>
+
+      <!-- 右上：配料台 + 融合 -->
+      <div class="zone-card" id="zoneMix">
+        <div class="zone-header">
+          <span class="zone-icon">🧪</span> 配料台
+          <span class="zone-badge" style="background:#ede9fe;color:#7c3aed" id="mixCountBadge">0种</span>
+        </div>
+        <div class="zone-body">
+          <div class="mix-station" id="mixStation" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+            <div class="mix-hint" id="mixHint">
+              <div style="font-size:32px;margin-bottom:4px;">⬇️</div>
+              <div>拖拽原材料到此处配料</div>
+            </div>
+            <div class="mix-items" id="mixItems"></div>
+          </div>
+          <button class="btn-fuse" id="btnFuse" disabled onclick="fuseMaterials()">
+            ⚡ 一键融合生成半成品
+          </button>
+          <div style="font-size:11px;color:var(--text-3);margin-top:6px;text-align:center;">
+            至少选 2 种原材料进行融合
+          </div>
+        </div>
+      </div>
+
+      <!-- 左下：半成品区 + 锻造 -->
+      <div class="zone-card" id="zoneSemi">
+        <div class="zone-header">
+          <span class="zone-icon">🔨</span> 半成品区
+          <span class="zone-badge" style="background:#fff7ed;color:var(--forge)" id="semiCountBadge">0件</span>
+        </div>
+        <div class="zone-body">
+          <div class="semi-grid" id="semiGrid">
+            <div class="empty-state"><div class="empty-icon">🪵</div><div class="empty-text">融合后将在此生成半成品</div></div>
+          </div>
+          <button class="btn-forge" id="btnForge" disabled onclick="forgeSemi()">
+            🔨 锻造 → 送入熔炉
+          </button>
+          <div style="font-size:11px;color:var(--text-3);margin-top:6px;text-align:center;">
+            选中半成品后点击锻造
+          </div>
+        </div>
+      </div>
+
+      <!-- 右下：熔炉 → 成品 -->
+      <div class="zone-card" id="zoneFurnace">
+        <div class="zone-header">
+          <span class="zone-icon">🔥</span> 熔炉冶炼
+          <span class="zone-badge" style="background:#fef2f2;color:var(--danger)">高温</span>
+        </div>
+        <div class="zone-body">
+          <div class="furnace-zone" id="furnaceZone">
+            <div class="furnace-fire" id="furnaceFire">🔥</div>
+            <div class="furnace-text" id="furnaceStatus">等待半成品入炉…</div>
+            <div class="furnace-slot" id="furnaceSlot" onclick="cancelFurnace()">
+              <div class="slot-label">熔炉投料口</div>
+              <div id="furnaceSlotContent" style="margin-top:4px;font-weight:600;">空</div>
+            </div>
+            <button class="btn-smelt" id="btnSmelt" disabled onclick="startSmelt()">
+              ⚡ 开始冶炼
+            </button>
+          </div>
+          <div style="margin-top:12px;">
+            <div class="text-xs text-gray-500 mb-2">冶炼进度</div>
+            <div class="progress-bar"><div class="progress-fill orange" id="smeltProgress" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 成品区 ===== -->
+    <div class="zone-card mt-4" id="zoneProducts">
+      <div class="zone-header">
+        <span class="zone-icon">📦</span> 成品仓库
+        <span class="zone-badge" style="background:#cffafe;color:#0e7490" id="prodCountBadge">0件</span>
+      </div>
+      <div class="zone-body">
+        <div class="product-grid" id="productGrid">
+          <div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">完成冶炼后成品将出现在这里</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 实时图表联动 ===== -->
+    <div class="charts-row mt-4">
+      <div class="chart-box">
+        <div class="chart-title">📊 原材料库存分布</div>
+        <canvas id="chartMaterials"></canvas>
+      </div>
+      <div class="chart-box">
+        <div class="chart-title">📈 生产产出趋势</div>
+        <canvas id="chartProduction"></canvas>
+      </div>
+    </div>
+    <div class="chart-box mt-3">
+      <div class="chart-title">🔄 生产流程统计</div>
+      <canvas id="chartFlow" style="max-height:180px;"></canvas>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================
+       Steel 可视化生产模块 v1.0
+       - 拖拽配料 → 融合 → 锻造 → 熔炉 → 成品
+       - Chart.js 实时图表联动
+       - 对接现有 localStorage 库存/生产数据
+       - PWA 移动端适配
+       ========================================== */
+
+    // ===== 存储 Key =====
+    var STORAGE_KEY = 'steel_production_plans';
+    var INVENTORY_KEY = 'steel_material_inventory';
+    var SEMI_KEY = 'steel_semi_products';
+    var PRODUCT_KEY = 'steel_final_products';
+    var PRODUCTION_LOG_KEY = 'steel_production_log';
+
+    // ===== 数据初始化 =====
+    var materials = [];    // 原材料库存 [{id, name, icon, qty, unit, category, minQty}]
+    var mixItems = [];     // 配料台上的原料
+    var semiProducts = []; // 半成品 [{id, name, icon, materials, status, createdAt}]
+    var finalProducts = [];// 成品 [{id, name, icon, fromSemi, materials, createdAt}]
+    var selectedSemi = null;// 当前选中的半成品
+    var furnaceItem = null; // 熔炉中的半成品
+    var productionLog = []; // 生产日志 [{time, action, detail}]
+    var smeltTimer = null;
+    var smeltProgress = 0;
+
+    // 图表实例
+    var chartMat = null;
+    var chartProd = null;
+    var chartFlow = null;
+
+    // ===== 从生产计划生成原材料 =====
+    function syncMaterialsFromPlans() {
+      try {
+        var plans = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        if (!Array.isArray(plans)) plans = [];
+
+        // 从 localStorage 读取已有库存
+        var saved = localStorage.getItem(INVENTORY_KEY);
+        if (saved) {
+          try { materials = JSON.parse(saved); } catch(e) { materials = []; }
+        }
+
+        // 如果没有库存数据，从生产计划自动生成默认原材料
+        if (materials.length === 0 && plans.length > 0) {
+          var defaultMats = [
+            { id: 'mat_iron', name: '铁矿石', icon: '🪨', qty: 500, unit: 'kg', category: '矿石', minQty: 50 },
+            { id: 'mat_coal', name: '焦煤', icon: '🪵', qty: 300, unit: 'kg', category: '燃料', minQty: 30 },
+            { id: 'mat_lime', name: '石灰石', icon: '🪨', qty: 200, unit: 'kg', category: '辅料', minQty: 20 },
+            { id: 'mat_mn', name: '锰铁合金', icon: '🪨', qty: 150, unit: 'kg', category: '合金', minQty: 15 },
+            { id: 'mat_si', name: '硅铁合金', icon: '🔩', qty: 120, unit: 'kg', category: '合金', minQty: 10 },
+            { id: 'mat_cr', name: '铬铁合金', icon: '🔩', qty: 100, unit: 'kg', category: '合金', minQty: 10 },
+            { id: 'mat_ni', name: '镍板', icon: '🪙', qty: 80, unit: 'kg', category: '合金', minQty: 8 },
+            { id: 'mat_scrap', name: '废钢', icon: '♻️', qty: 250, unit: 'kg', category: '回收', minQty: 25 }
+          ];
+          materials = defaultMats;
+          saveInventory();
+        }
+
+        // 确保至少有一些默认材料
+        if (materials.length === 0) {
+          materials = [
+            { id: 'mat_iron', name: '铁矿石', icon: '🪨', qty: 500, unit: 'kg', category: '矿石', minQty: 50 },
+            { id: 'mat_coal', name: '焦煤', icon: '🪵', qty: 300, unit: 'kg', category: '燃料', minQty: 30 },
+            { id: 'mat_lime', name: '石灰石', icon: '🪨', qty: 200, unit: 'kg', category: '辅料', minQty: 20 },
+            { id: 'mat_mn', name: '锰铁合金', icon: '🪨', qty: 150, unit: 'kg', category: '合金', minQty: 15 },
+            { id: 'mat_scrap', name: '废钢', icon: '♻️', qty: 250, unit: 'kg', category: '回收', minQty: 25 }
+          ];
+          saveInventory();
+        }
+      } catch(e) {
+        console.error('同步原材料失败:', e);
+        materials = [
+          { id: 'mat_iron', name: '铁矿石', icon: '🪨', qty: 500, unit: 'kg', category: '矿石', minQty: 50 },
+          { id: 'mat_coal', name: '焦煤', icon: '🪵', qty: 300, unit: 'kg', category: '燃料', minQty: 30 },
+          { id: 'mat_scrap', name: '废钢', icon: '♻️', qty: 250, unit: 'kg', category: '回收', minQty: 25 }
+        ];
+        saveInventory();
+      }
+    }
+
+    function saveInventory() {
+      localStorage.setItem(INVENTORY_KEY, JSON.stringify(materials));
+    }
+
+    function loadAllData() {
+      syncMaterialsFromPlans();
+      var semi = localStorage.getItem(SEMI_KEY);
+      if (semi) { try { semiProducts = JSON.parse(semi); } catch(e) { semiProducts = []; } }
+      var prod = localStorage.getItem(PRODUCT_KEY);
+      if (prod) { try { finalProducts = JSON.parse(prod); } catch(e) { finalProducts = []; } }
+      var log = localStorage.getItem(PRODUCTION_LOG_KEY);
+      if (log) { try { productionLog = JSON.parse(log); } catch(e) { productionLog = []; } }
+    }
+
+    function saveSemi() { localStorage.setItem(SEMI_KEY, JSON.stringify(semiProducts)); }
+    function saveProducts() { localStorage.setItem(PRODUCT_KEY, JSON.stringify(finalProducts)); }
+    function saveLog() { localStorage.setItem(PRODUCTION_LOG_KEY, JSON.stringify(productionLog.slice(-50))); }
+
+    function addLog(action, detail) {
+      productionLog.push({ time: new Date().toISOString(), action: action, detail: detail });
+      saveLog();
+    }
+
+    // ===== 渲染原材料 =====
+    function renderMaterials() {
+      var grid = document.getElementById('materialGrid');
+      if (materials.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">暂无原材料库存<br>请先录入生产计划</div></div>';
+      } else {
+        grid.innerHTML = materials.map(function(m) {
+          var isLow = m.qty <= m.minQty;
+          var used = mixItems.some(function(x) { return x.id === m.id; });
+          var cls = 'material-item' + (isLow ? ' low-stock' : '') + (used ? ' used' : '');
+          var dragAttr = used ? '' : 'draggable="true" ondragstart="handleDragStart(event,\'' + m.id + '\')"';
+          return '<div class="' + cls + '" data-id="' + m.id + '" ' + dragAttr + '>' +
+            '<div class="mat-qty">' + m.qty + '</div>' +
+            '<div class="mat-icon">' + m.icon + '</div>' +
+            '<div class="mat-name">' + m.name + '</div>' +
+            '<div class="mat-stock">库存: ' + m.qty + '<span class="mat-unit">' + m.unit + '</span></div>' +
+            (isLow ? '<div style="font-size:10px;color:var(--danger);margin-top:2px;">⚠ 低库存</div>' : '') +
+          '</div>';
+        }).join('');
+      }
+      document.getElementById('matCountBadge').textContent = materials.length + '种';
+    }
+
+    // ===== 渲染配料台 =====
+    function renderMixStation() {
+      var hint = document.getElementById('mixHint');
+      var items = document.getElementById('mixItems');
+      if (mixItems.length === 0) {
+        hint.style.display = 'block';
+        items.innerHTML = '';
+      } else {
+        hint.style.display = 'none';
+        items.innerHTML = mixItems.map(function(item) {
+          return '<div class="mix-chip" data-id="' + item.id + '">' +
+            '<span>' + item.icon + ' ' + item.name + '</span>' +
+            '<span style="font-size:11px;opacity:.6;">×' + item.count + '</span>' +
+            '<button class="chip-remove" onclick="removeFromMix(\'' + item.id + '\')">×</button>' +
+          '</div>';
+        }).join('');
+      }
+      document.getElementById('mixCountBadge').textContent = mixItems.length + '种';
+      document.getElementById('btnFuse').disabled = mixItems.length < 2;
+    }
+
+    // ===== 拖拽逻辑 =====
+    function handleDragStart(e, matId) {
+      e.dataTransfer.setData('text/plain', matId);
+      e.dataTransfer.effectAllowed = 'move';
+      var el = document.querySelector('.material-item[data-id="' + matId + '"]');
+      if (el) el.classList.add('dragging');
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.getElementById('mixStation').classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      document.getElementById('mixStation').classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('mixStation').classList.remove('drag-over');
+      var matId = e.dataTransfer.getData('text/plain');
+      if (!matId) return;
+      // 清除拖拽样式
+      var el = document.querySelector('.material-item[data-id="' + matId + '"]');
+      if (el) el.classList.remove('dragging');
+      addToMix(matId);
+    }
+
+    function addToMix(matId) {
+      var mat = materials.find(function(m) { return m.id === matId; });
+      if (!mat) return;
+      if (mat.qty <= 0) { showToast('该原材料库存不足', 'warning'); return; }
+      var existing = mixItems.find(function(x) { return x.id === matId; });
+      if (existing) {
+        if (existing.count >= mat.qty) { showToast('该原材料已全部投入', 'warning'); return; }
+        existing.count++;
+      } else {
+        mixItems.push({ id: mat.id, name: mat.name, icon: mat.icon, count: 1, unit: mat.unit });
+      }
+      renderMaterials();
+      renderMixStation();
+      showToast('已添加 ' + mat.name + ' ×' + (existing ? existing.count : 1), 'success');
+    }
+
+    function removeFromMix(matId) {
+      mixItems = mixItems.filter(function(x) { return x.id !== matId; });
+      renderMaterials();
+      renderMixStation();
+    }
+
+    // ===== 融合生成半成品 =====
+    function fuseMaterials() {
+      if (mixItems.length < 2) { showToast('至少需要 2 种原材料', 'warning'); return; }
+      var btn = document.getElementById('btnFuse');
+      btn.classList.add('fusing');
+      btn.textContent = '⚡ 融合中…';
+
+      // 扣除库存
+      mixItems.forEach(function(item) {
+        var mat = materials.find(function(m) { return m.id === item.id; });
+        if (mat) {
+          mat.qty = Math.max(0, mat.qty - item.count);
+        }
+      });
+
+      // 生成半成品名称
+      var names = mixItems.map(function(x) { return x.name; });
+      var semiName = names.slice(0, 2).join('-') + '半成品';
+      var semi = {
+        id: 'semi_' + Date.now(),
+        name: semiName,
+        icon: '🪨',
+        materials: mixItems.map(function(x) { return { id: x.id, name: x.name, icon: x.icon, count: x.count, unit: x.unit }; }),
+        status: 'ready', // ready | forging | forged
+        createdAt: new Date().toISOString()
+      };
+      semiProducts.push(semi);
+      saveSemi();
+
+      // 清空配料台
+      mixItems = [];
+      saveInventory();
+
+      // 粒子效果
+      spawnParticles(document.getElementById('btnFuse'), '✨', 12);
+
+      setTimeout(function() {
+        btn.classList.remove('fusing');
+        btn.textContent = '⚡ 一键融合生成半成品';
+        renderMaterials();
+        renderMixStation();
+        renderSemiProducts();
+        updateStats();
+        updateCharts();
+        addLog('融合', '生成半成品: ' + semiName + ' (' + names.join('+') + ')');
+        showToast('✅ 融合成功! 半成品已生成', 'success');
+      }, 900);
+    }
+
+    // ===== 渲染半成品 =====
+    function renderSemiProducts() {
+      var grid = document.getElementById('semiGrid');
+      if (semiProducts.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><div class="empty-icon">🪵</div><div class="empty-text">融合后将在此生成半成品</div></div>';
+      } else {
+        grid.innerHTML = semiProducts.map(function(sp) {
+          var isSelected = selectedSemi && selectedSemi.id === sp.id;
+          var cls = 'semi-item' + (isSelected ? ' selected' : '') + (sp.status === 'forging' ? ' forging' : '');
+          var matNames = sp.materials.map(function(m) { return m.name; }).join(', ');
+          var statusCls = sp.status === 'forged' ? 'forged' : 'ready';
+          var statusText = sp.status === 'forged' ? '已锻造' : '待锻造';
+          return '<div class="' + cls + '" data-id="' + sp.id + '" onclick="selectSemi(\'' + sp.id + '\')">' +
+            '<span class="semi-status ' + statusCls + '">' + statusText + '</span>' +
+            '<div class="semi-icon">' + sp.icon + '</div>' +
+            '<div class="semi-name">' + sp.name + '</div>' +
+            '<div class="semi-materials">原料: ' + matNames + '</div>' +
+          '</div>';
+        }).join('');
+      }
+      document.getElementById('semiCountBadge').textContent = semiProducts.length + '件';
+      document.getElementById('btnForge').disabled = !selectedSemi || (selectedSemi && selectedSemi.status === 'forged');
+    }
+
+    function selectSemi(semiId) {
+      selectedSemi = semiProducts.find(function(s) { return s.id === semiId; }) || null;
+      if (selectedSemi && selectedSemi.status === 'forged') {
+        showToast('该半成品已锻造，请送入熔炉', 'warning');
+      }
+      renderSemiProducts();
+    }
+
+    // ===== 锻造 =====
+    function forgeSemi() {
+      if (!selectedSemi) return;
+      if (selectedSemi.status === 'forged') { showToast('该半成品已锻造', 'warning'); return; }
+      selectedSemi.status = 'forging';
+      selectedSemi.icon = '⚒️';
+      saveSemi();
+      renderSemiProducts();
+
+      // 动画
+      var el = document.querySelector('.semi-item[data-id="' + selectedSemi.id + '"]');
+      if (el) { el.classList.add('forging'); setTimeout(function() { el.classList.remove('forging'); }, 600); }
+      spawnParticles(document.getElementById('btnForge'), '🔨', 10);
+
+      setTimeout(function() {
+        selectedSemi.status = 'forged';
+        selectedSemi.icon = '🔩';
+        saveSemi();
+        renderSemiProducts();
+        updateStats();
+        updateCharts();
+        addLog('锻造', '半成品锻造完成: ' + selectedSemi.name);
+        showToast('🔨 锻造完成! 请将半成品送入熔炉', 'success');
+      }, 700);
+    }
+
+    // ===== 送入熔炉 =====
+    function sendToFurnace(semiId) {
+      var semi = semiProducts.find(function(s) { return s.id === semiId; });
+      if (!semi || semi.status !== 'forged') { showToast('请先锻造半成品', 'warning'); return; }
+      furnaceItem = semi;
+      selectedSemi = null;
+      renderFurnace();
+      renderSemiProducts();
+      showToast('🔥 半成品已送入熔炉', 'success');
+    }
+
+    function cancelFurnace() {
+      if (!furnaceItem) return;
+      if (smeltTimer) { clearInterval(smeltTimer); smeltTimer = null; }
+      furnaceItem.status = 'forged';
+      furnaceItem.icon = '🔩';
+      furnaceItem = null;
+      smeltProgress = 0;
+      document.getElementById('btnSmelt').disabled = false;
+      document.getElementById('btnSmelt').classList.remove('smelting');
+      document.getElementById('smeltProgress').style.width = '0%';
+      document.getElementById('furnaceStatus').textContent = '等待半成品入炉…';
+      document.getElementById('furnaceSlotContent').textContent = '空';
+      document.getElementById('furnaceSlot').classList.remove('has-item');
+      saveSemi();
+      renderFurnace();
+      renderSemiProducts();
+      showToast('已从熔炉取出半成品', 'warning');
+    }
+
+    function renderFurnace() {
+      if (furnaceItem) {
+        document.getElementById('furnaceStatus').textContent = '半成品就绪';
+        document.getElementById('furnaceSlotContent').textContent = furnaceItem.name;
+        document.getElementById('furnaceSlot').classList.add('has-item');
+        document.getElementById('btnSmelt').disabled = false;
+      } else {
+        document.getElementById('furnaceStatus').textContent = '等待半成品入炉…';
+        document.getElementById('furnaceSlotContent').textContent = '空';
+        document.getElementById('furnaceSlot').classList.remove('has-item');
+        document.getElementById('btnSmelt').disabled = true;
+      }
+    }
+
+    // ===== 冶炼 =====
+    function startSmelt() {
+      if (!furnaceItem) return;
+      if (smeltTimer) return;
+      var btn = document.getElementById('btnSmelt');
+      btn.classList.add('smelting');
+      btn.disabled = true;
+      smeltProgress = 0;
+      document.getElementById('furnaceFire').style.fontSize = '70px';
+      document.getElementById('furnaceStatus').textContent = '⚡ 冶炼中…';
+
+      smeltTimer = setInterval(function() {
+        smeltProgress += Math.random() * 8 + 2;
+        if (smeltProgress >= 100) {
+          smeltProgress = 100;
+          clearInterval(smeltTimer);
+          smeltTimer = null;
+          completeSmelt();
+        }
+        document.getElementById('smeltProgress').style.width = smeltProgress + '%';
+      }, 200);
+    }
+
+    function completeSmelt() {
+      var semi = furnaceItem;
+      var matNames = semi.materials.map(function(m) { return m.name; }).join('+');
+      var product = {
+        id: 'prod_' + Date.now(),
+        name: matNames + '钢材',
+        icon: '🪙',
+        fromSemi: semi.name,
+        materials: semi.materials,
+        createdAt: new Date().toISOString()
+      };
+      finalProducts.push(product);
+      saveProducts();
+
+      // 从半成品列表移除
+      semiProducts = semiProducts.filter(function(s) { return s.id !== semi.id; });
+      saveSemi();
+
+      furnaceItem = null;
+      smeltProgress = 0;
+      document.getElementById('smeltProgress').style.width = '0%';
+      document.getElementById('btnSmelt').classList.remove('smelting');
+      document.getElementById('btnSmelt').disabled = true;
+      document.getElementById('furnaceFire').style.fontSize = '60px';
+      document.getElementById('furnaceStatus').textContent = '等待半成品入炉…';
+      document.getElementById('furnaceSlotContent').textContent = '空';
+      document.getElementById('furnaceSlot').classList.remove('has-item');
+
+      spawnParticles(document.getElementById('furnaceZone'), '🔥', 20);
+      renderFurnace();
+      renderSemiProducts();
+      renderProducts();
+      updateStats();
+      updateCharts();
+      addLog('冶炼完成', '产出成品: ' + product.name);
+      showToast('🎉 冶炼完成! 成品已入库', 'success');
+    }
+
+    // ===== 渲染成品 =====
+    function renderProducts() {
+      var grid = document.getElementById('productGrid');
+      if (finalProducts.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">完成冶炼后成品将出现在这里</div></div>';
+      } else {
+        grid.innerHTML = finalProducts.map(function(p) {
+          var matNames = p.materials.map(function(m) { return m.name; }).join(', ');
+          var time = new Date(p.createdAt).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+          return '<div class="product-item">' +
+            '<span class="prod-badge">🆕</span>' +
+            '<div class="prod-icon">' + p.icon + '</div>' +
+            '<div class="prod-name">' + p.name + '</div>' +
+            '<div class="prod-detail">原料: ' + matNames + '</div>' +
+            '<div class="prod-detail">时间: ' + time + '</div>' +
+          '</div>';
+        }).join('');
+      }
+      document.getElementById('prodCountBadge').textContent = finalProducts.length + '件';
+    }
+
+    // ===== 统计面板 =====
+    function updateStats() {
+      var totalMat = materials.reduce(function(s, m) { return s + m.qty; }, 0);
+      document.getElementById('statMaterials').textContent = materials.length;
+      document.getElementById('statSemi').textContent = semiProducts.length;
+      document.getElementById('statProducts').textContent = finalProducts.length;
+      var today = new Date().toISOString().split('T')[0];
+      var todayOps = productionLog.filter(function(l) { return l.time.startsWith(today); }).length;
+      document.getElementById('statToday').textContent = todayOps;
+    }
+
+    // ===== 图表更新 =====
+    function updateCharts() {
+      updateMaterialsChart();
+      updateProductionChart();
+      updateFlowChart();
+    }
+
+    function updateMaterialsChart() {
+      var ctx = document.getElementById('chartMaterials').getContext('2d');
+      if (chartMat) chartMat.destroy();
+      var labels = materials.map(function(m) { return m.name; });
+      var data = materials.map(function(m) { return m.qty; });
+      var colors = ['#2563eb','#3b82f6','#60a5fa','#93c5fd','#f97316','#fb923c','#8b5cf6','#10b981'];
+      chartMat = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{ data: data, backgroundColor: colors.slice(0, data.length), borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } } }
+        }
+      });
+    }
+
+    function updateProductionChart() {
+      var ctx = document.getElementById('chartProduction').getContext('2d');
+      if (chartProd) chartProd.destroy();
+      var today = new Date().toISOString().split('T')[0];
+      // 按小时聚合今日产出
+      var hours = [];
+      for (var i = 0; i < 24; i++) { hours.push(i + ':00'); }
+      var hourlyData = new Array(24).fill(0);
+      finalProducts.forEach(function(p) {
+        var h = new Date(p.createdAt).getHours();
+        if (p.createdAt.startsWith(today)) hourlyData[h]++;
+      });
+      chartProd = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: hours,
+          datasets: [{
+            label: '成品产出', data: hourlyData,
+            backgroundColor: '#10b981', borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    function updateFlowChart() {
+      var ctx = document.getElementById('chartFlow').getContext('2d');
+      if (chartFlow) chartFlow.destroy();
+      chartFlow = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['原材料', '配料中', '半成品', '熔炉中', '成品'],
+          datasets: [{
+            label: '数量',
+            data: [
+              materials.length,
+              mixItems.length,
+              semiProducts.length,
+              furnaceItem ? 1 : 0,
+              finalProducts.length
+            ],
+            backgroundColor: ['#2563eb','#8b5cf6','#f97316','#dc2626','#10b981'],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true, maintainAspectRatio: true,
+          scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // ===== 粒子效果 =====
+    function spawnParticles(targetEl, emoji, count) {
+      var rect = targetEl.getBoundingClientRect();
+      var cx = rect.left + rect.width / 2;
+      var cy = rect.top + rect.height / 2;
+      for (var i = 0; i < count; i++) {
+        var p = document.createElement('div');
+        p.className = 'particle';
+        p.textContent = emoji;
+        p.style.left = cx + 'px';
+        p.style.top = cy + 'px';
+        var angle = Math.random() * Math.PI * 2;
+        var dist = 40 + Math.random() * 80;
+        p.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+        p.style.setProperty('--dy', Math.sin(angle) * dist - 30 + 'px');
+        document.body.appendChild(p);
+        setTimeout(function() { p.remove(); }, 900);
+      }
+    }
+
+    // ===== Toast =====
+    function showToast(msg, type) {
+      var toast = document.createElement('div');
+      toast.className = 'toast ' + (type || 'success');
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(function() { toast.remove(); }, 2500);
+    }
+
+    // ===== 半成品双击送入熔炉 =====
+    document.addEventListener('dblclick', function(e) {
+      var semiEl = e.target.closest('.semi-item');
+      if (!semiEl) return;
+      var semiId = semiEl.dataset.id;
+      var semi = semiProducts.find(function(s) { return s.id === semiId; });
+      if (semi && semi.status === 'forged') {
+        sendToFurnace(semiId);
+      }
+    });
+
+    // ===== 移动端标签切换 =====
+    document.getElementById('mobileTabs').addEventListener('click', function(e) {
+      if (e.target.tagName !== 'BUTTON') return;
+      var zone = e.target.dataset.zone;
+      var zones = {
+        materials: 'zoneMaterials', mix: 'zoneMix', semi: 'zoneSemi',
+        furnace: 'zoneFurnace', products: 'zoneProducts'
+      };
+      // 更新标签状态
+      this.querySelectorAll('button').forEach(function(b) { b.classList.remove('active'); });
+      e.target.classList.add('active');
+      // 滚动到目标区域
+      var el = document.getElementById(zones[zone]);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.style.boxShadow = '0 0 0 3px rgba(37,99,235,.3)';
+        setTimeout(function() { el.style.boxShadow = ''; }, 1500);
+      }
+    });
+
+    // ===== 响应式网格 =====
+    function adjustLayout() {
+      var grid = document.getElementById('mainGrid');
+      if (window.innerWidth < 768) {
+        grid.style.gridTemplateColumns = '1fr';
+      } else {
+        grid.style.gridTemplateColumns = '1fr 1fr';
+      }
+    }
+
+    window.addEventListener('resize', adjustLayout);
+
+    // ===== 初始化 =====
+    function init() {
+      loadAllData();
+      adjustLayout();
+      renderMaterials();
+      renderMixStation();
+      renderSemiProducts();
+      renderFurnace();
+      renderProducts();
+      updateStats();
+      updateCharts();
+      console.log('[可视化生产] 初始化完成 | 原材料: ' + materials.length + '种 | 半成品: ' + semiProducts.length + '件 | 成品: ' + finalProducts.length + '件');
+    }
+
+    // ===== Service Worker 注册 =====
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(function() {});
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
