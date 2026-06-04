@@ -14,6 +14,7 @@ const ASSETS = [
   BASE + '/index.html',
   BASE + '/index-app.html',
   BASE + '/logistics.html',
+  BASE + '/produce-view.html',
   BASE + '/css/style.css',
   BASE + '/js/storage.js',
   BASE + '/js/production-form.js',

@@ -84,6 +84,13 @@
       "description": "实时追踪订单物流状态，地图轨迹 + 时间轴",
       "url": "logistics.html",
       "icons": [{ "src": "icons/icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "可视化生产",
+      "short_name": "生产",
+      "description": "拖拽配料 · 融合锻造 · 熔炉产出，全程动画联动图表",
+      "url": "produce-view.html",
+      "icons": [{ "src": "icons/icon-96x96.png", "sizes": "96x96" }]
     }
   ]
 }
