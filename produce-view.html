@@ -500,9 +500,12 @@
           <button class="btn-forge" id="btnForge" disabled onclick="forgeSemi()">
             🔨 锻造 → 送入熔炉
           </button>
-          <div style="font-size:11px;color:var(--text-3);margin-top:6px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-3);margin-top:6px;text-align:center;" id="forgeHint">
             选中半成品后点击锻造
           </div>
+          <button class="btn-forge" id="btnToFurnace" style="display:none;background:linear-gradient(135deg, #dc2626, #b91c1c);" onclick="forgeAndSendToFurnace()">
+            🔥 送入熔炉
+          </button>
         </div>
       </div>
 
@@ -981,15 +984,27 @@
     function selectSemi(semiId) {
       selectedSemi = semiProducts.find(function(s) { return s.id === semiId; }) || null;
       if (selectedSemi && selectedSemi.status === 'forged') {
-        showToast('该半成品已锻造，请送入熔炉', 'warning');
+        // 已锻造的半成品 → 直接显示送入熔炉按钮
+        forgedSemiId = semiId;
+        document.getElementById('btnForge').style.display = 'none';
+        document.getElementById('btnToFurnace').style.display = 'flex';
+        document.getElementById('forgeHint').textContent = '🔥 该半成品已锻造，可直接送入熔炉';
+      } else {
+        // 未锻造 → 显示锻造按钮
+        forgedSemiId = null;
+        document.getElementById('btnForge').style.display = 'flex';
+        document.getElementById('btnToFurnace').style.display = 'none';
+        document.getElementById('forgeHint').textContent = '选中半成品后点击锻造';
       }
       renderSemiProducts();
     }
 
     // ===== 锻造 =====
+    var forgedSemiId = null; // 记录刚锻造完的半成品ID
+
     function forgeSemi() {
       if (!selectedSemi) return;
-      if (selectedSemi.status === 'forged') { showToast('该半成品已锻造', 'warning'); return; }
+      if (selectedSemi.status === 'forged') { showToast('该半成品已锻造，请点击送入熔炉', 'warning'); return; }
       selectedSemi.status = 'forging';
       selectedSemi.icon = '⚒️';
       saveSemi();
@@ -1000,16 +1015,38 @@
       if (el) { el.classList.add('forging'); setTimeout(function() { el.classList.remove('forging'); }, 600); }
       spawnParticles(document.getElementById('btnForge'), '🔨', 10);
 
+      var semiId = selectedSemi.id;
       setTimeout(function() {
-        selectedSemi.status = 'forged';
-        selectedSemi.icon = '🔩';
+        var semi = semiProducts.find(function(s) { return s.id === semiId; });
+        if (!semi) return;
+        semi.status = 'forged';
+        semi.icon = '🔩';
+        forgedSemiId = semiId;
         saveSemi();
         renderSemiProducts();
         updateStats();
         updateCharts();
-        addLog('锻造', '半成品锻造完成: ' + selectedSemi.name);
-        showToast('🔨 锻造完成! 请将半成品送入熔炉', 'success');
+        addLog('锻造', '半成品锻造完成: ' + semi.name);
+
+        // 锻造完成 → 自动切换到送入熔炉模式
+        document.getElementById('btnForge').style.display = 'none';
+        document.getElementById('btnToFurnace').style.display = 'flex';
+        document.getElementById('forgeHint').textContent = '🔥 锻造完成！点击下方按钮送入熔炉';
+        showToast('🔨 锻造完成! 请点击「送入熔炉」', 'success');
       }, 700);
+    }
+
+    // ===== 锻造完成后直接送入熔炉 =====
+    function forgeAndSendToFurnace() {
+      if (!forgedSemiId) return;
+      var semi = semiProducts.find(function(s) { return s.id === forgedSemiId; });
+      if (!semi || semi.status !== 'forged') { showToast('请先锻造半成品', 'warning'); return; }
+      sendToFurnace(forgedSemiId);
+      // 恢复锻造按钮状态
+      forgedSemiId = null;
+      document.getElementById('btnForge').style.display = 'flex';
+      document.getElementById('btnToFurnace').style.display = 'none';
+      document.getElementById('forgeHint').textContent = '选中半成品后点击锻造';
     }
 
     // ===== 送入熔炉 =====
@@ -1018,8 +1055,14 @@
       if (!semi || semi.status !== 'forged') { showToast('请先锻造半成品', 'warning'); return; }
       furnaceItem = semi;
       selectedSemi = null;
+      forgedSemiId = null;
+      // 恢复锻造按钮状态
+      document.getElementById('btnForge').style.display = 'flex';
+      document.getElementById('btnToFurnace').style.display = 'none';
+      document.getElementById('forgeHint').textContent = '选中半成品后点击锻造';
       renderFurnace();
       renderSemiProducts();
+      updateStats();
       showToast('🔥 半成品已送入熔炉', 'success');
     }
 
