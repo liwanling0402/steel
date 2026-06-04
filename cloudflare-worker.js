@@ -1,23 +1,13 @@
 /**
- * Cloudflare Worker - 快递鸟 API 代理
+ * Cloudflare Worker - 快递鸟 API 代理（Worker 端签名版）
  * 
- * 部署方法：
- * 1. 打开 https://dash.cloudflare.com/ 
- * 2. 左侧菜单 Workers & Pages → Create application → Create Worker
- * 3. 点击 "Edit code"，把这段代码粘贴进去
- * 4. 点击右上角 "Deploy" 
- * 5. 记住你的 Worker URL（如 https://kdn-proxy.你的用户名.workers.dev）
- * 6. 把 URL 填入 logistics.html 的 KDN_PROXY_URL 变量
+ * 前端只需发送: { ShipperCode, LogisticCode }
+ * Worker 自动完成签名并转发到快递鸟
  */
 
 export default {
   async fetch(request) {
-    // 只允许 POST
-    if (request.method !== 'POST') {
-      return new Response('Method Not Allowed', { status: 405 });
-    }
-
-    // 处理 CORS 预检请求
+    // CORS 预检
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -28,26 +18,69 @@ export default {
       });
     }
 
+    if (request.method !== 'POST') {
+      return new Response('Only POST allowed', { 
+        status: 405,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
     try {
-      // 读取前端发来的请求体
-      const body = await request.text();
+      // 读取前端发来的 JSON 参数
+      const params = await request.json();
+      const shipperCode = params.ShipperCode || '';
+      const logisticCode = params.LogisticCode || '';
+
+      // 快递鸟配置（在 Worker 环境变量中设置更安全）
+      const EBUSINESS_ID = '1923623';
+      const API_KEY = '55953650-60be-4564-b242-7cf7f0299706';
+
+      // 构建 RequestData
+      const requestDataObj = {
+        OrderCode: '',
+        ShipperCode: shipperCode,
+        LogisticCode: logisticCode
+      };
+      const requestData = JSON.stringify(requestDataObj);
+
+      // 签名算法
+      const cleaned = requestData.replace(/: /g, ':').replace(/, /g, ',');
+      const signStr = cleaned + API_KEY;
+      
+      // MD5
+      const encoder = new TextEncoder();
+      const data = encoder.encode(signStr);
+      const hashBuffer = await crypto.subtle.digest('MD5', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const md5Hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      // Base64
+      const bytes = new Uint8Array(md5Hash.split('').map(c => c.charCodeAt(0)));
+      let binary = '';
+      bytes.forEach(b => binary += String.fromCharCode(b));
+      const dataSign = btoa(binary);
+
+      // 构建表单数据
+      const formData = new URLSearchParams();
+      formData.append('RequestData', requestData);
+      formData.append('EBusinessID', EBUSINESS_ID);
+      formData.append('RequestType', '1002');
+      formData.append('DataSign', dataSign);
+      formData.append('DataType', '2');
 
       // 转发到快递鸟 API
       const kdnResponse = await fetch(
         'https://api.kdniao.com/Ebusiness/EbusinessOrderHandle.aspx',
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-          },
-          body: body,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body: formData.toString(),
         }
       );
 
-      const data = await kdnResponse.text();
-
-      // 返回给前端
-      return new Response(data, {
+      const responseData = await kdnResponse.text();
+      
+      return new Response(responseData, {
         headers: {
           'Content-Type': 'application/json;charset=UTF-8',
           'Access-Control-Allow-Origin': '*',
@@ -55,7 +88,7 @@ export default {
       });
     } catch (err) {
       return new Response(
-        JSON.stringify({ Success: false, Reason: '代理请求失败: ' + err.message }),
+        JSON.stringify({ Success: false, Reason: '代理错误: ' + err.message }),
         {
           status: 500,
           headers: {

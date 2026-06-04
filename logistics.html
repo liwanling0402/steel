@@ -1597,32 +1597,18 @@ function callKDNExpressAPI(shipperCode, logisticCode) {
 
 /**
  * 通过 Cloudflare Worker 代理调用快递鸟 API（推荐方案）
+ * Worker 端自动完成签名，前端只需传参数
  */
 function callKDNViaWorker(shipperCode, logisticCode) {
-  if (!KDN_EBUSINESS_ID) {
-    return Promise.reject(new Error('EBusinessID 未配置'));
-  }
-
-  var requestData = JSON.stringify({
-    OrderCode: '',
-    ShipperCode: shipperCode,
-    LogisticCode: logisticCode
-  });
-
-  var dataSign = kdnSign(requestData);
-
-  var formBody = 'RequestData=' + encodeURIComponent(requestData) +
-    '&EBusinessID=' + encodeURIComponent(KDN_EBUSINESS_ID) +
-    '&RequestType=1002' +
-    '&DataSign=' + encodeURIComponent(dataSign) +
-    '&DataType=2';
-
   return fetch(KDN_PROXY_URL, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+      'Content-Type': 'application/json'
     },
-    body: formBody
+    body: JSON.stringify({
+      ShipperCode: shipperCode,
+      LogisticCode: logisticCode
+    })
   }).then(function(res) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
