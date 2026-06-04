@@ -176,6 +176,52 @@
     .mix-chip .chip-remove:hover { background: #fecaca; }
     @keyframes chipIn { from { opacity: 0; transform: scale(.5) translateY(-10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
+    /* ===== 配方选择面板 ===== */
+    .recipe-panel {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+      overflow: hidden; margin-top: 10px;
+    }
+    .recipe-panel-header {
+      padding: 10px 14px; background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+      font-size: 13px; font-weight: 600; color: var(--text-2);
+      display: flex; align-items: center; gap: 6px; cursor: pointer;
+      border-bottom: 1px solid #e2e8f0; user-select: none;
+    }
+    .recipe-panel-header .arrow { transition: transform .2s; font-size: 12px; }
+    .recipe-panel-header.open .arrow { transform: rotate(90deg); }
+    .recipe-list { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+    .recipe-list.open { max-height: 600px; overflow-y: auto; }
+    .recipe-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; cursor: pointer; transition: all .15s;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .recipe-item:hover { background: #f8fafc; }
+    .recipe-item:active { background: #eff6ff; }
+    .recipe-item .recipe-grade {
+      font-size: 14px; font-weight: 700; color: var(--text);
+      min-width: 50px; white-space: nowrap;
+    }
+    .recipe-item .recipe-desc {
+      font-size: 11px; color: var(--text-3); flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .recipe-item .recipe-arrow {
+      font-size: 14px; color: var(--text-3); flex-shrink: 0;
+    }
+    .recipe-item .recipe-grade-badge {
+      font-size: 10px; padding: 2px 8px; border-radius: 10px;
+      font-weight: 600; flex-shrink: 0;
+    }
+    .recipe-grade-badge.tool { background: #dbeafe; color: #2563eb; }
+    .recipe-grade-badge.mold { background: #fef3c7; color: #d97706; }
+    .recipe-grade-badge.stainless { background: #d1fae5; color: #059669; }
+    .recipe-grade-badge.structural { background: #ede9fe; color: #7c3aed; }
+    .recipe-grade-badge.special { background: #fee2e2; color: #dc2626; }
+    .recipe-item.active-recipe {
+      background: #eff6ff; border-left: 3px solid var(--accent);
+    }
+
     /* ===== 融合按钮 ===== */
     .btn-fuse {
       display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -430,6 +476,14 @@
           <div style="font-size:11px;color:var(--text-3);margin-top:6px;text-align:center;">
             至少选 2 种原材料进行融合
           </div>
+          <!-- 配方选择面板 -->
+          <div class="recipe-panel" id="recipePanel">
+            <div class="recipe-panel-header" onclick="toggleRecipePanel()">
+              📋 钢材配料方案 <span class="arrow" id="recipeArrow">▶</span>
+              <span style="margin-left:auto;font-size:11px;opacity:.6;" id="recipeCount">0个配方</span>
+            </div>
+            <div class="recipe-list" id="recipeList"></div>
+          </div>
         </div>
       </div>
 
@@ -528,12 +582,146 @@
     var materials = [];    // 原材料库存 [{id, name, icon, qty, unit, category, minQty}]
     var mixItems = [];     // 配料台上的原料
     var semiProducts = []; // 半成品 [{id, name, icon, materials, status, createdAt}]
-    var finalProducts = [];// 成品 [{id, name, icon, fromSemi, materials, createdAt}]
+    var finalProducts = [];// 成品 [{id, name, icon, fromSemi, materials, createdAt, grade}]
     var selectedSemi = null;// 当前选中的半成品
     var furnaceItem = null; // 熔炉中的半成品
     var productionLog = []; // 生产日志 [{time, action, detail}]
     var smeltTimer = null;
     var smeltProgress = 0;
+    var currentRecipe = null; // 当前选中的配方 {grade, name, category}
+    var recipePanelOpen = false;
+
+    // ===== 钢材配方数据库 =====
+    // 每个配方定义：钢材牌号、名称、用途分类、所需原材料及数量
+    var steelRecipes = [
+      // --- 热作模具钢 ---
+      { grade: 'H13', name: '热作模具钢', category: 'mold', desc: '压铸模/热挤压模/热锻模',
+        ingredients: [
+          { id: 'mat_iron', count: 20 }, { id: 'mat_cr', count: 8 }, { id: 'mat_mo', count: 3 },
+          { id: 'mat_v', count: 2 }, { id: 'mat_si', count: 2 }, { id: 'mat_mn', count: 1 }, { id: 'mat_scrap', count: 15 }
+        ]
+      },
+      { grade: 'H11', name: '热作模具钢', category: 'mold', desc: '铝合金压铸模/热挤压工具',
+        ingredients: [
+          { id: 'mat_iron', count: 18 }, { id: 'mat_cr', count: 6 }, { id: 'mat_mo', count: 2 },
+          { id: 'mat_v', count: 1 }, { id: 'mat_si', count: 2 }, { id: 'mat_scrap', count: 12 }
+        ]
+      },
+      // --- 冷作模具钢 ---
+      { grade: 'Cr12MoV', name: '冷作模具钢', category: 'mold', desc: '冷冲模/拉伸模/冷镦模/滚丝模',
+        ingredients: [
+          { id: 'mat_iron', count: 16 }, { id: 'mat_cr', count: 10 }, { id: 'mat_mo', count: 2 },
+          { id: 'mat_v', count: 1 }, { id: 'mat_mn', count: 1 }, { id: 'mat_scrap', count: 10 }
+        ]
+      },
+      { grade: 'D2', name: '冷作模具钢', category: 'mold', desc: '高耐磨冷冲模/剪切刀片/量具',
+        ingredients: [
+          { id: 'mat_iron', count: 15 }, { id: 'mat_cr', count: 9 }, { id: 'mat_mo', count: 2 },
+          { id: 'mat_v', count: 2 }, { id: 'mat_coal', count: 5 }, { id: 'mat_scrap', count: 8 }
+        ]
+      },
+      // --- 塑料模具钢 ---
+      { grade: '718H', name: '塑料模具钢', category: 'mold', desc: '大型家电外壳/汽车内饰模具',
+        ingredients: [
+          { id: 'mat_iron', count: 14 }, { id: 'mat_cr', count: 4 }, { id: 'mat_ni', count: 3 },
+          { id: 'mat_mo', count: 1 }, { id: 'mat_mn', count: 2 }, { id: 'mat_scrap', count: 10 }
+        ]
+      },
+      { grade: 'NAK80', name: '塑料模具钢', category: 'mold', desc: '镜面模具/光学透镜/高光外壳',
+        ingredients: [
+          { id: 'mat_iron', count: 12 }, { id: 'mat_ni', count: 5 }, { id: 'mat_cr', count: 3 },
+          { id: 'mat_al', count: 2 }, { id: 'mat_mn', count: 2 }, { id: 'mat_scrap', count: 8 }
+        ]
+      },
+      // --- 合金结构钢 ---
+      { grade: '40Cr', name: '合金结构钢', category: 'structural', desc: '齿轮/轴类/连杆/螺栓/蜗杆',
+        ingredients: [
+          { id: 'mat_iron', count: 25 }, { id: 'mat_cr', count: 3 }, { id: 'mat_mn', count: 2 },
+          { id: 'mat_si', count: 1 }, { id: 'mat_scrap', count: 18 }
+        ]
+      },
+      { grade: '42CrMo', name: '合金结构钢', category: 'structural', desc: '高强度齿轮/曲轴/缸体/紧固件',
+        ingredients: [
+          { id: 'mat_iron', count: 22 }, { id: 'mat_cr', count: 4 }, { id: 'mat_mo', count: 2 },
+          { id: 'mat_mn', count: 2 }, { id: 'mat_si', count: 1 }, { id: 'mat_scrap', count: 15 }
+        ]
+      },
+      { grade: '20CrMnTi', name: '渗碳齿轮钢', category: 'structural', desc: '汽车变速箱齿轮/差速器齿轮',
+        ingredients: [
+          { id: 'mat_iron', count: 24 }, { id: 'mat_cr', count: 3 }, { id: 'mat_mn', count: 3 },
+          { id: 'mat_ti', count: 2 }, { id: 'mat_scrap', count: 16 }
+        ]
+      },
+      // --- 工具钢 ---
+      { grade: 'W6Mo5Cr4V2', name: '高速工具钢', category: 'tool', desc: '车刀/铣刀/钻头/丝锥/滚刀',
+        ingredients: [
+          { id: 'mat_iron', count: 14 }, { id: 'mat_w', count: 6 }, { id: 'mat_mo', count: 4 },
+          { id: 'mat_cr', count: 3 }, { id: 'mat_v', count: 2 }, { id: 'mat_coal', count: 6 }
+        ]
+      },
+      { grade: 'W18Cr4V', name: '高速工具钢', category: 'tool', desc: '重型切削刀具/拉刀/成形铣刀',
+        ingredients: [
+          { id: 'mat_iron', count: 12 }, { id: 'mat_w', count: 12 }, { id: 'mat_cr', count: 3 },
+          { id: 'mat_v', count: 1 }, { id: 'mat_coal', count: 6 }
+        ]
+      },
+      { grade: '9SiCr', name: '合金工具钢', category: 'tool', desc: '丝锥/板牙/铰刀/搓丝板',
+        ingredients: [
+          { id: 'mat_iron', count: 18 }, { id: 'mat_si', count: 3 }, { id: 'mat_cr', count: 3 },
+          { id: 'mat_mn', count: 2 }, { id: 'mat_coal', count: 4 }
+        ]
+      },
+      // --- 不锈钢 ---
+      { grade: '304', name: '奥氏体不锈钢', category: 'stainless', desc: '食品设备/管道/建筑装饰/日用品',
+        ingredients: [
+          { id: 'mat_iron', count: 16 }, { id: 'mat_cr', count: 12 }, { id: 'mat_ni', count: 6 },
+          { id: 'mat_mn', count: 2 }, { id: 'mat_si', count: 1 }
+        ]
+      },
+      { grade: '316L', name: '奥氏体不锈钢', category: 'stainless', desc: '化工容器/海洋工程/医疗器械',
+        ingredients: [
+          { id: 'mat_iron', count: 14 }, { id: 'mat_cr', count: 10 }, { id: 'mat_ni', count: 8 },
+          { id: 'mat_mo', count: 3 }, { id: 'mat_mn', count: 2 }
+        ]
+      },
+      { grade: '430', name: '铁素体不锈钢', category: 'stainless', desc: '家电面板/汽车装饰条/厨房用具',
+        ingredients: [
+          { id: 'mat_iron', count: 18 }, { id: 'mat_cr', count: 10 }, { id: 'mat_si', count: 2 },
+          { id: 'mat_mn', count: 1 }, { id: 'mat_scrap', count: 10 }
+        ]
+      },
+      // --- 弹簧钢 ---
+      { grade: '60Si2Mn', name: '弹簧钢', category: 'special', desc: '汽车板簧/螺旋弹簧/扭杆弹簧',
+        ingredients: [
+          { id: 'mat_iron', count: 20 }, { id: 'mat_si', count: 5 }, { id: 'mat_mn', count: 3 },
+          { id: 'mat_cr', count: 1 }, { id: 'mat_scrap', count: 14 }
+        ]
+      },
+      // --- 轴承钢 ---
+      { grade: 'GCr15', name: '轴承钢', category: 'special', desc: '滚动轴承套圈/滚珠/滚柱/量规',
+        ingredients: [
+          { id: 'mat_iron', count: 18 }, { id: 'mat_cr', count: 6 }, { id: 'mat_si', count: 2 },
+          { id: 'mat_mn', count: 2 }, { id: 'mat_scrap', count: 12 }
+        ]
+      }
+    ];
+
+    // 配方需要用到的所有原材料定义（确保库存中有这些原料）
+    var allRecipeMaterials = [
+      { id: 'mat_iron', name: '铁矿石', icon: '🪨', qty: 500, unit: 'kg', category: '矿石', minQty: 50 },
+      { id: 'mat_coal', name: '焦煤', icon: '🪵', qty: 300, unit: 'kg', category: '燃料', minQty: 30 },
+      { id: 'mat_lime', name: '石灰石', icon: '🪨', qty: 200, unit: 'kg', category: '辅料', minQty: 20 },
+      { id: 'mat_mn', name: '锰铁合金', icon: '🪨', qty: 150, unit: 'kg', category: '合金', minQty: 15 },
+      { id: 'mat_si', name: '硅铁合金', icon: '🔩', qty: 120, unit: 'kg', category: '合金', minQty: 10 },
+      { id: 'mat_cr', name: '铬铁合金', icon: '🔩', qty: 100, unit: 'kg', category: '合金', minQty: 10 },
+      { id: 'mat_ni', name: '镍板', icon: '🪙', qty: 80, unit: 'kg', category: '合金', minQty: 8 },
+      { id: 'mat_mo', name: '钼铁合金', icon: '🔩', qty: 60, unit: 'kg', category: '合金', minQty: 6 },
+      { id: 'mat_v', name: '钒铁合金', icon: '🔩', qty: 40, unit: 'kg', category: '合金', minQty: 5 },
+      { id: 'mat_w', name: '钨铁合金', icon: '🔩', qty: 40, unit: 'kg', category: '合金', minQty: 5 },
+      { id: 'mat_ti', name: '钛铁合金', icon: '🔩', qty: 30, unit: 'kg', category: '合金', minQty: 3 },
+      { id: 'mat_al', name: '铝锭', icon: '🪙', qty: 50, unit: 'kg', category: '合金', minQty: 5 },
+      { id: 'mat_scrap', name: '废钢', icon: '♻️', qty: 250, unit: 'kg', category: '回收', minQty: 25 }
+    ];
 
     // 图表实例
     var chartMat = null;
@@ -552,40 +740,27 @@
           try { materials = JSON.parse(saved); } catch(e) { materials = []; }
         }
 
-        // 如果没有库存数据，从生产计划自动生成默认原材料
-        if (materials.length === 0 && plans.length > 0) {
-          var defaultMats = [
-            { id: 'mat_iron', name: '铁矿石', icon: '🪨', qty: 500, unit: 'kg', category: '矿石', minQty: 50 },
-            { id: 'mat_coal', name: '焦煤', icon: '🪵', qty: 300, unit: 'kg', category: '燃料', minQty: 30 },
-            { id: 'mat_lime', name: '石灰石', icon: '🪨', qty: 200, unit: 'kg', category: '辅料', minQty: 20 },
-            { id: 'mat_mn', name: '锰铁合金', icon: '🪨', qty: 150, unit: 'kg', category: '合金', minQty: 15 },
-            { id: 'mat_si', name: '硅铁合金', icon: '🔩', qty: 120, unit: 'kg', category: '合金', minQty: 10 },
-            { id: 'mat_cr', name: '铬铁合金', icon: '🔩', qty: 100, unit: 'kg', category: '合金', minQty: 10 },
-            { id: 'mat_ni', name: '镍板', icon: '🪙', qty: 80, unit: 'kg', category: '合金', minQty: 8 },
-            { id: 'mat_scrap', name: '废钢', icon: '♻️', qty: 250, unit: 'kg', category: '回收', minQty: 25 }
-          ];
-          materials = defaultMats;
+        // 如果没有库存数据，从完整原料列表初始化
+        if (materials.length === 0) {
+          materials = allRecipeMaterials.map(function(m) {
+            return Object.assign({}, m);
+          });
           saveInventory();
         }
 
-        // 确保至少有一些默认材料
-        if (materials.length === 0) {
-          materials = [
-            { id: 'mat_iron', name: '铁矿石', icon: '🪨', qty: 500, unit: 'kg', category: '矿石', minQty: 50 },
-            { id: 'mat_coal', name: '焦煤', icon: '🪵', qty: 300, unit: 'kg', category: '燃料', minQty: 30 },
-            { id: 'mat_lime', name: '石灰石', icon: '🪨', qty: 200, unit: 'kg', category: '辅料', minQty: 20 },
-            { id: 'mat_mn', name: '锰铁合金', icon: '🪨', qty: 150, unit: 'kg', category: '合金', minQty: 15 },
-            { id: 'mat_scrap', name: '废钢', icon: '♻️', qty: 250, unit: 'kg', category: '回收', minQty: 25 }
-          ];
-          saveInventory();
-        }
+        // 确保配方需要的所有原料都存在（补充缺失的）
+        allRecipeMaterials.forEach(function(defMat) {
+          var exists = materials.find(function(m) { return m.id === defMat.id; });
+          if (!exists) {
+            materials.push(Object.assign({}, defMat));
+            saveInventory();
+          }
+        });
       } catch(e) {
         console.error('同步原材料失败:', e);
-        materials = [
-          { id: 'mat_iron', name: '铁矿石', icon: '🪨', qty: 500, unit: 'kg', category: '矿石', minQty: 50 },
-          { id: 'mat_coal', name: '焦煤', icon: '🪵', qty: 300, unit: 'kg', category: '燃料', minQty: 30 },
-          { id: 'mat_scrap', name: '废钢', icon: '♻️', qty: 250, unit: 'kg', category: '回收', minQty: 25 }
-        ];
+        materials = allRecipeMaterials.map(function(m) {
+          return Object.assign({}, m);
+        });
         saveInventory();
       }
     }
@@ -723,13 +898,26 @@
         }
       });
 
-      // 生成半成品名称
+      // 生成半成品名称 - 如果有配方用配方名称，否则用默认名
       var names = mixItems.map(function(x) { return x.name; });
-      var semiName = names.slice(0, 2).join('-') + '半成品';
+      var semiName, semiIcon, semiGrade, semiCategory;
+      if (currentRecipe) {
+        semiName = currentRecipe.grade + ' ' + currentRecipe.name + ' (半成品)';
+        semiGrade = currentRecipe.grade;
+        semiCategory = currentRecipe.category;
+        semiIcon = getRecipeIcon(currentRecipe.category);
+      } else {
+        semiName = names.slice(0, 2).join('-') + '半成品';
+        semiGrade = null;
+        semiCategory = 'custom';
+        semiIcon = '🪨';
+      }
       var semi = {
         id: 'semi_' + Date.now(),
         name: semiName,
-        icon: '🪨',
+        icon: semiIcon,
+        grade: semiGrade,
+        category: semiCategory,
         materials: mixItems.map(function(x) { return { id: x.id, name: x.name, icon: x.icon, count: x.count, unit: x.unit }; }),
         status: 'ready', // ready | forging | forged
         createdAt: new Date().toISOString()
@@ -739,6 +927,7 @@
 
       // 清空配料台
       mixItems = [];
+      currentRecipe = null;
       saveInventory();
 
       // 粒子效果
@@ -750,11 +939,17 @@
         renderMaterials();
         renderMixStation();
         renderSemiProducts();
+        renderRecipePanel();
         updateStats();
         updateCharts();
         addLog('融合', '生成半成品: ' + semiName + ' (' + names.join('+') + ')');
         showToast('✅ 融合成功! 半成品已生成', 'success');
       }, 900);
+    }
+
+    function getRecipeIcon(category) {
+      var icons = { mold: '🔧', tool: '🔪', stainless: '🍴', structural: '⚙️', special: '🏭', custom: '🪨' };
+      return icons[category] || '🪨';
     }
 
     // ===== 渲染半成品 =====
@@ -769,8 +964,10 @@
           var matNames = sp.materials.map(function(m) { return m.name; }).join(', ');
           var statusCls = sp.status === 'forged' ? 'forged' : 'ready';
           var statusText = sp.status === 'forged' ? '已锻造' : '待锻造';
+          var gradeBadge = sp.grade ? '<span class="recipe-grade-badge ' + (sp.category || 'custom') + '" style="font-size:10px;position:absolute;top:8px;left:10px;">' + sp.grade + '</span>' : '';
           return '<div class="' + cls + '" data-id="' + sp.id + '" onclick="selectSemi(\'' + sp.id + '\')">' +
             '<span class="semi-status ' + statusCls + '">' + statusText + '</span>' +
+            gradeBadge +
             '<div class="semi-icon">' + sp.icon + '</div>' +
             '<div class="semi-name">' + sp.name + '</div>' +
             '<div class="semi-materials">原料: ' + matNames + '</div>' +
@@ -885,10 +1082,20 @@
     function completeSmelt() {
       var semi = furnaceItem;
       var matNames = semi.materials.map(function(m) { return m.name; }).join('+');
+      var productName, productIcon;
+      if (semi.grade) {
+        productName = semi.grade + ' ' + semi.name.replace(' (半成品)', '');
+        productIcon = getRecipeIcon(semi.category);
+      } else {
+        productName = matNames + '钢材';
+        productIcon = '🪙';
+      }
       var product = {
         id: 'prod_' + Date.now(),
-        name: matNames + '钢材',
-        icon: '🪙',
+        name: productName,
+        icon: productIcon,
+        grade: semi.grade || null,
+        category: semi.category || 'custom',
         fromSemi: semi.name,
         materials: semi.materials,
         createdAt: new Date().toISOString()
@@ -929,8 +1136,9 @@
         grid.innerHTML = finalProducts.map(function(p) {
           var matNames = p.materials.map(function(m) { return m.name; }).join(', ');
           var time = new Date(p.createdAt).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+          var gradeBadge = p.grade ? '<span class="recipe-grade-badge ' + (p.category || 'custom') + '">' + p.grade + '</span>' : '<span class="prod-badge">🆕</span>';
           return '<div class="product-item">' +
-            '<span class="prod-badge">🆕</span>' +
+            gradeBadge +
             '<div class="prod-icon">' + p.icon + '</div>' +
             '<div class="prod-name">' + p.name + '</div>' +
             '<div class="prod-detail">原料: ' + matNames + '</div>' +
@@ -1065,6 +1273,103 @@
       setTimeout(function() { toast.remove(); }, 2500);
     }
 
+    // ===== 配方面板 =====
+    function toggleRecipePanel() {
+      recipePanelOpen = !recipePanelOpen;
+      var list = document.getElementById('recipeList');
+      var header = document.querySelector('.recipe-panel-header');
+      if (recipePanelOpen) {
+        list.classList.add('open');
+        header.classList.add('open');
+      } else {
+        list.classList.remove('open');
+        header.classList.remove('open');
+      }
+    }
+
+    function renderRecipePanel() {
+      var list = document.getElementById('recipeList');
+      document.getElementById('recipeCount').textContent = steelRecipes.length + '个配方';
+
+      var categoryNames = { mold: '模具钢', tool: '工具钢', stainless: '不锈钢', structural: '结构钢', special: '特种钢' };
+
+      // 按分类分组
+      var grouped = {};
+      steelRecipes.forEach(function(r) {
+        if (!grouped[r.category]) grouped[r.category] = [];
+        grouped[r.category].push(r);
+      });
+
+      var html = '';
+      Object.keys(grouped).forEach(function(cat) {
+        html += '<div style="padding:6px 14px;font-size:11px;font-weight:700;color:var(--text-3);background:#fafafa;border-bottom:1px solid #f0f0f0;">' +
+          (categoryNames[cat] || cat) + '</div>';
+        grouped[cat].forEach(function(recipe) {
+          var isActive = currentRecipe && currentRecipe.grade === recipe.grade;
+          var cls = 'recipe-item' + (isActive ? ' active-recipe' : '');
+          // 检查库存是否足够
+          var canMake = checkRecipeAvailability(recipe);
+          var opacityStyle = canMake ? '' : 'opacity:.45;';
+          html += '<div class="' + cls + '" onclick="selectRecipe(\'' + recipe.grade + '\')" style="' + opacityStyle + '">' +
+            '<span class="recipe-grade-badge ' + recipe.category + '">' + recipe.grade + '</span>' +
+            '<span class="recipe-grade">' + recipe.name + '</span>' +
+            '<span class="recipe-desc">' + recipe.desc + '</span>' +
+            (canMake ? '<span class="recipe-arrow" style="color:var(--success)">✓</span>' : '<span class="recipe-arrow" style="color:var(--danger)">✗</span>') +
+          '</div>';
+        });
+      });
+      list.innerHTML = html;
+    }
+
+    function checkRecipeAvailability(recipe) {
+      return recipe.ingredients.every(function(ing) {
+        var mat = materials.find(function(m) { return m.id === ing.id; });
+        return mat && mat.qty >= ing.count;
+      });
+    }
+
+    function selectRecipe(grade) {
+      var recipe = steelRecipes.find(function(r) { return r.grade === grade; });
+      if (!recipe) return;
+
+      // 检查库存
+      if (!checkRecipeAvailability(recipe)) {
+        showToast('⚠ 库存不足，无法按配方配料', 'error');
+        return;
+      }
+
+      // 清空当前配料台
+      mixItems = [];
+
+      // 按配方填充
+      recipe.ingredients.forEach(function(ing) {
+        mixItems.push({
+          id: ing.id,
+          name: getMaterialName(ing.id),
+          icon: getMaterialIcon(ing.id),
+          count: ing.count,
+          unit: 'kg'
+        });
+      });
+
+      currentRecipe = { grade: recipe.grade, name: recipe.name, category: recipe.category };
+
+      renderMaterials();
+      renderMixStation();
+      renderRecipePanel();
+      showToast('📋 已加载配方: ' + recipe.grade + ' ' + recipe.name, 'success');
+    }
+
+    function getMaterialName(matId) {
+      var mat = allRecipeMaterials.find(function(m) { return m.id === matId; });
+      return mat ? mat.name : matId;
+    }
+
+    function getMaterialIcon(matId) {
+      var mat = allRecipeMaterials.find(function(m) { return m.id === matId; });
+      return mat ? mat.icon : '🔩';
+    }
+
     // ===== 半成品双击送入熔炉 =====
     document.addEventListener('dblclick', function(e) {
       var semiEl = e.target.closest('.semi-item');
@@ -1117,9 +1422,10 @@
       renderSemiProducts();
       renderFurnace();
       renderProducts();
+      renderRecipePanel();
       updateStats();
       updateCharts();
-      console.log('[可视化生产] 初始化完成 | 原材料: ' + materials.length + '种 | 半成品: ' + semiProducts.length + '件 | 成品: ' + finalProducts.length + '件');
+      console.log('[可视化生产] 初始化完成 | 原材料: ' + materials.length + '种 | 半成品: ' + semiProducts.length + '件 | 成品: ' + finalProducts.length + '件 | 配方: ' + steelRecipes.length + '个');
     }
 
     // ===== Service Worker 注册 =====
