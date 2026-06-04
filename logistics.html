@@ -1735,21 +1735,36 @@ function searchExternalExpress() {
     }
   }
 
-  // 如果配置了 Cloudflare Worker 代理，优先使用
+  // 发起查询
+  doExpressQuery(shipperCode, expressNo);
+}
+
+function doExpressQuery(shipperCode, expressNo) {
+  // 策略1: 如果配置了 Cloudflare Worker，优先使用
   if (KDN_PROXY_URL) {
+    console.log('使用 Worker 代理:', KDN_PROXY_URL);
     return callKDNViaWorker(shipperCode, expressNo)
       .then(function(result) {
         showExpressLoading(false);
         handleExpressResult(result, expressNo, shipperCode);
       })
       .catch(function(err) {
-        showExpressLoading(false);
-        console.error('快递查询失败:', err);
-        showToast('❌ 查询失败：' + (err.message || '网络错误，请稍后重试'), 'error');
+        console.warn('Worker 代理失败:', err.message, '，尝试直接调用...');
+        // Worker 失败，尝试直接调用
+        return callKDNExpressAPI(shipperCode, expressNo)
+          .then(function(result) {
+            showExpressLoading(false);
+            handleExpressResult(result, expressNo, shipperCode);
+          })
+          .catch(function(err2) {
+            showExpressLoading(false);
+            console.error('快递查询失败:', err2);
+            showToast('❌ 查询失败：' + (err2.message || '网络错误，请稍后重试'), 'error');
+          });
       });
   }
 
-  // 先尝试直接调用，失败则用公共代理
+  // 策略2: 直接调用，失败则用公共代理
   callKDNExpressAPI(shipperCode, expressNo)
     .then(function(result) {
       showExpressLoading(false);
