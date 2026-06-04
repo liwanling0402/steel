@@ -400,6 +400,92 @@
     }
     .qty-adjust button:hover { background: #f1f5f9; }
     .qty-adjust .qty-val { font-size: 15px; font-weight: 700; min-width: 24px; text-align: center; }
+
+    /* ===== 编辑弹窗 ===== */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center;
+      animation: modalFadeIn .2s ease; padding: 16px;
+    }
+    .modal-overlay.closing { animation: modalFadeOut .2s ease forwards; }
+    @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes modalFadeOut { from { opacity: 1; } to { opacity: 0; } }
+    .modal-box {
+      background: #fff; border-radius: 18px; width: 100%; max-width: 480px;
+      max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      animation: modalSlideUp .25s ease;
+    }
+    @keyframes modalSlideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-header {
+      padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #f0f0f0; position: sticky; top: 0; background: #fff;
+      border-radius: 18px 18px 0 0; z-index: 1;
+    }
+    .modal-title { font-size: 16px; font-weight: 700; }
+    .modal-close {
+      width: 32px; height: 32px; border-radius: 50%; border: none; background: #f1f5f9;
+      font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: var(--text-2); transition: all .15s;
+    }
+    .modal-close:hover { background: #e2e8f0; }
+    .modal-body { padding: 20px; }
+    .modal-body label { display: block; font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+    .modal-body input, .modal-body select, .modal-body textarea {
+      width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 10px;
+      font-size: 14px; color: var(--text); background: #f8fafc; transition: border-color .15s; outline: none;
+    }
+    .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus { border-color: var(--accent); background: #fff; }
+    .modal-body textarea { min-height: 80px; resize: vertical; }
+    .modal-body .form-group { margin-bottom: 16px; }
+    .modal-body .form-row { display: flex; gap: 10px; }
+    .modal-body .form-row > * { flex: 1; }
+    .modal-body .edit-ingredient {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 6px;
+    }
+    .modal-body .edit-ingredient .ing-icon { font-size: 22px; flex-shrink: 0; }
+    .modal-body .edit-ingredient .ing-name { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; }
+    .modal-body .edit-ingredient input { width: 70px; padding: 6px 10px; text-align: center; flex-shrink: 0; }
+    .modal-body .edit-ingredient .ing-remove {
+      width: 26px; height: 26px; border-radius: 50%; border: none; background: #fee2e2;
+      color: var(--danger); font-size: 14px; cursor: pointer; flex-shrink: 0;
+    }
+    .modal-body .edit-ingredient .ing-remove:hover { background: #fecaca; }
+    .modal-footer {
+      padding: 12px 20px 16px; display: flex; gap: 10px; justify-content: flex-end;
+      border-top: 1px solid #f0f0f0;
+    }
+    .modal-footer button {
+      padding: 10px 22px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s;
+    }
+    .btn-cancel { background: #f1f5f9; color: var(--text-2); border: 1px solid #e2e8f0; }
+    .btn-cancel:hover { background: #e2e8f0; }
+    .btn-save { background: var(--accent); color: #fff; border: none; }
+    .btn-save:hover { background: #1d4ed8; }
+    .btn-delete { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+    .btn-delete:hover { background: #fee2e2; }
+
+    /* ===== 编辑按钮 ===== */
+    .edit-btn {
+      width: 26px; height: 26px; border-radius: 50%; border: none;
+      background: rgba(0,0,0,.06); color: var(--text-3); font-size: 13px;
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+      transition: all .15s; position: absolute; top: 6px; right: 6px; z-index: 2;
+    }
+    .edit-btn:hover { background: rgba(0,0,0,.12); color: var(--text-2); }
+    .zone-edit-btn {
+      font-size: 11px; padding: 4px 12px; border-radius: 8px; border: 1px solid #e2e8f0;
+      background: #f8fafc; color: var(--text-2); cursor: pointer; font-weight: 500;
+      transition: all .15s; margin-left: auto; margin-right: 6px;
+    }
+    .zone-edit-btn:hover { background: #eff6ff; border-color: var(--accent); color: var(--accent); }
+    .mix-edit-area { display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end; }
+    .mix-edit-area button {
+      font-size: 11px; padding: 5px 12px; border-radius: 8px; border: 1px solid #e2e8f0;
+      background: #fff; color: var(--text-2); cursor: pointer; font-weight: 500;
+      transition: all .15s;
+    }
+    .mix-edit-area button:hover { background: #f1f5f9; border-color: var(--accent); }
   </style>
 </head>
 <body>
@@ -421,6 +507,18 @@
       <button class="active">⚙️ 可视化生产</button>
     </nav>
   </header>
+
+  <!-- ===== 编辑弹窗 ===== -->
+  <div class="modal-overlay" id="editModal" style="display:none;" onclick="closeEditModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title" id="editModalTitle">编辑</span>
+        <button class="modal-close" onclick="closeEditModal()">✕</button>
+      </div>
+      <div class="modal-body" id="editModalBody"></div>
+      <div class="modal-footer" id="editModalFooter"></div>
+    </div>
+  </div>
 
   <!-- ===== 移动端快捷标签 ===== -->
   <div class="main-content">
@@ -446,6 +544,7 @@
       <div class="zone-card" id="zoneMaterials" style="grid-row:1/3;">
         <div class="zone-header">
           <span class="zone-icon">🧱</span> 原材料库存
+          <button class="zone-edit-btn" onclick="editMaterials()">✏️ 编辑</button>
           <span class="zone-badge" style="background:#dbeafe;color:var(--accent)" id="matCountBadge">0种</span>
         </div>
         <div class="zone-body">
@@ -460,6 +559,7 @@
       <div class="zone-card" id="zoneMix">
         <div class="zone-header">
           <span class="zone-icon">🧪</span> 配料台
+          <button class="zone-edit-btn" onclick="editMixStation()">✏️ 编辑</button>
           <span class="zone-badge" style="background:#ede9fe;color:#7c3aed" id="mixCountBadge">0种</span>
         </div>
         <div class="zone-body">
@@ -491,6 +591,7 @@
       <div class="zone-card" id="zoneSemi">
         <div class="zone-header">
           <span class="zone-icon">🔨</span> 半成品区
+          <button class="zone-edit-btn" onclick="editSemiProducts()">✏️ 编辑</button>
           <span class="zone-badge" style="background:#fff7ed;color:var(--forge)" id="semiCountBadge">0件</span>
         </div>
         <div class="zone-body">
@@ -513,6 +614,7 @@
       <div class="zone-card" id="zoneFurnace">
         <div class="zone-header">
           <span class="zone-icon">🔥</span> 熔炉冶炼
+          <button class="zone-edit-btn" onclick="editFurnace()">✏️ 编辑</button>
           <span class="zone-badge" style="background:#fef2f2;color:var(--danger)">高温</span>
         </div>
         <div class="zone-body">
@@ -539,6 +641,7 @@
     <div class="zone-card mt-4" id="zoneProducts">
       <div class="zone-header">
         <span class="zone-icon">📦</span> 成品仓库
+        <button class="zone-edit-btn" onclick="editProducts()">✏️ 编辑</button>
         <span class="zone-badge" style="background:#cffafe;color:#0e7490" id="prodCountBadge">0件</span>
       </div>
       <div class="zone-body">
@@ -1310,6 +1413,306 @@
       toast.textContent = msg;
       document.body.appendChild(toast);
       setTimeout(function() { toast.remove(); }, 2500);
+    }
+
+    // ===== 编辑弹窗 =====
+    var editCallback = null; // 保存回调
+
+    function openEditModal(title, bodyHtml, footerHtml, onSave) {
+      document.getElementById('editModalTitle').textContent = title;
+      document.getElementById('editModalBody').innerHTML = bodyHtml;
+      document.getElementById('editModalFooter').innerHTML = footerHtml;
+      document.getElementById('editModal').style.display = 'flex';
+      editCallback = onSave;
+    }
+
+    function closeEditModal(e) {
+      if (e && e.target !== document.getElementById('editModal')) return;
+      var overlay = document.getElementById('editModal');
+      overlay.classList.add('closing');
+      setTimeout(function() {
+        overlay.style.display = 'none';
+        overlay.classList.remove('closing');
+        editCallback = null;
+      }, 180);
+    }
+
+    function saveEditModal() {
+      if (editCallback) editCallback();
+      closeEditModal();
+    }
+
+    // ===== 1. 编辑原材料库存 =====
+    function editMaterials() {
+      if (materials.length === 0) { showToast('暂无原材料', 'warning'); return; }
+      var rows = materials.map(function(m, i) {
+        return '<div class="edit-ingredient">' +
+          '<span class="ing-icon">' + m.icon + '</span>' +
+          '<span class="ing-name">' + m.name + '</span>' +
+          '<input type="number" id="editMatQty_' + i + '" value="' + m.qty + '" min="0" style="width:80px;" />' +
+          '<span style="font-size:11px;color:var(--text-3);">' + m.unit + '</span>' +
+        '</div>';
+      }).join('');
+
+      openEditModal('✏️ 编辑原材料库存',
+        '<div style="max-height:400px;overflow-y:auto;">' + rows + '</div>' +
+        '<div style="font-size:11px;color:var(--text-3);margin-top:8px;">修改库存数量，修改后配方可用性会自动更新</div>',
+        '<button class="btn-cancel" onclick="closeEditModal()">取消</button>' +
+        '<button class="btn-save" onclick="saveEditModal()">💾 保存</button>',
+        function() {
+          materials.forEach(function(m, i) {
+            var el = document.getElementById('editMatQty_' + i);
+            if (el) m.qty = Math.max(0, parseInt(el.value) || 0);
+          });
+          saveInventory();
+          renderMaterials();
+          renderRecipePanel();
+          updateStats();
+          updateCharts();
+          addLog('编辑', '修改了原材料库存');
+          showToast('✅ 原材料库存已更新', 'success');
+        }
+      );
+    }
+
+    // ===== 2. 编辑配料台 =====
+    function editMixStation() {
+      if (mixItems.length === 0) { showToast('配料台为空', 'warning'); return; }
+      var rows = mixItems.map(function(item, i) {
+        return '<div class="edit-ingredient">' +
+          '<span class="ing-icon">' + item.icon + '</span>' +
+          '<span class="ing-name">' + item.name + '</span>' +
+          '<input type="number" id="editMixQty_' + i + '" value="' + item.count + '" min="1" style="width:80px;" />' +
+          '<span style="font-size:11px;color:var(--text-3);">' + (item.unit || 'kg') + '</span>' +
+          '<button class="ing-remove" onclick="removeEditMixItem(' + i + ')" title="移除">×</button>' +
+        '</div>';
+      }).join('');
+
+      openEditModal('✏️ 编辑配料台',
+        '<div style="max-height:400px;overflow-y:auto;">' + rows + '</div>' +
+        '<div style="font-size:11px;color:var(--text-3);margin-top:8px;">调整各原材料用量，或点击 × 移除</div>',
+        '<button class="btn-cancel" onclick="closeEditModal()">取消</button>' +
+        '<button class="btn-save" onclick="saveEditModal()">💾 保存</button>',
+        function() {
+          var newMix = [];
+          mixItems.forEach(function(item, i) {
+            var el = document.getElementById('editMixQty_' + i);
+            if (el) {
+              var qty = Math.max(1, parseInt(el.value) || 1);
+              item.count = qty;
+              newMix.push(item);
+            }
+          });
+          mixItems = newMix;
+          currentRecipe = null;
+          renderMaterials();
+          renderMixStation();
+          renderRecipePanel();
+          addLog('编辑', '修改了配料台用量');
+          showToast('✅ 配料台已更新', 'success');
+        }
+      );
+    }
+
+    function removeEditMixItem(index) {
+      mixItems.splice(index, 1);
+      editMixStation(); // 重新打开弹窗刷新
+    }
+
+    // ===== 3. 编辑半成品 =====
+    function editSemiProducts() {
+      if (semiProducts.length === 0) { showToast('暂无半成品', 'warning'); return; }
+      var rows = semiProducts.map(function(sp, i) {
+        var matStr = sp.materials.map(function(m) { return m.name + '×' + m.count; }).join(', ');
+        return '<div class="edit-ingredient" style="flex-wrap:wrap;align-items:flex-start;padding:10px;">' +
+          '<span class="ing-icon" style="font-size:28px;">' + sp.icon + '</span>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:14px;font-weight:700;">' + sp.name + '</div>' +
+            '<div style="font-size:11px;color:var(--text-3);">' + matStr + '</div>' +
+            '<div style="font-size:11px;margin-top:4px;">' +
+              '<span class="recipe-grade-badge ' + (sp.category || 'custom') + '">' + (sp.grade || '自定义') + '</span>' +
+              '<span style="margin-left:6px;color:' + (sp.status === 'forged' ? 'var(--forge)' : 'var(--accent)') + ';">' + (sp.status === 'forged' ? '已锻造' : '待锻造') + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">' +
+            '<button style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #e2e8f0;background:#f8fafc;cursor:pointer;" onclick="editSingleSemi(\'' + sp.id + '\')">✏️ 修改</button>' +
+            '<button style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fef2f2;color:var(--danger);cursor:pointer;" onclick="deleteSingleSemi(\'' + sp.id + '\')">🗑 删除</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      openEditModal('✏️ 半成品管理',
+        '<div style="max-height:400px;overflow-y:auto;">' + rows + '</div>',
+        '<button class="btn-cancel" onclick="closeEditModal()">关闭</button>',
+        null
+      );
+    }
+
+    function editSingleSemi(semiId) {
+      var semi = semiProducts.find(function(s) { return s.id === semiId; });
+      if (!semi) return;
+
+      var ingRows = semi.materials.map(function(m, i) {
+        return '<div class="edit-ingredient">' +
+          '<span class="ing-icon">' + m.icon + '</span>' +
+          '<span class="ing-name">' + m.name + '</span>' +
+          '<input type="number" id="editSemiIng_' + i + '" value="' + m.count + '" min="1" style="width:80px;" />' +
+          '<span style="font-size:11px;color:var(--text-3);">' + (m.unit || 'kg') + '</span>' +
+        '</div>';
+      }).join('');
+
+      openEditModal('✏️ 修改半成品 - ' + semi.name,
+        '<div class="form-group">' +
+          '<label>半成品名称</label>' +
+          '<input type="text" id="editSemiName" value="' + semi.name + '" />' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>原料组成</label>' +
+          '<div style="max-height:300px;overflow-y:auto;">' + ingRows + '</div>' +
+        '</div>',
+        '<button class="btn-cancel" onclick="closeEditModal()">取消</button>' +
+        '<button class="btn-save" onclick="saveEditModal()">💾 保存</button>',
+        function() {
+          semi.name = document.getElementById('editSemiName').value || semi.name;
+          semi.materials.forEach(function(m, i) {
+            var el = document.getElementById('editSemiIng_' + i);
+            if (el) m.count = Math.max(1, parseInt(el.value) || 1);
+          });
+          if (selectedSemi && selectedSemi.id === semi.id) selectedSemi = semi;
+          saveSemi();
+          renderSemiProducts();
+          updateStats();
+          addLog('编辑', '修改了半成品: ' + semi.name);
+          showToast('✅ 半成品已更新', 'success');
+        }
+      );
+    }
+
+    function deleteSingleSemi(semiId) {
+      var semi = semiProducts.find(function(s) { return s.id === semiId; });
+      if (!semi) return;
+      if (!confirm('确定要删除半成品「' + semi.name + '」吗？此操作不可恢复。')) return;
+      semiProducts = semiProducts.filter(function(s) { return s.id !== semiId; });
+      if (selectedSemi && selectedSemi.id === semiId) {
+        selectedSemi = null;
+        forgedSemiId = null;
+        document.getElementById('btnForge').style.display = 'flex';
+        document.getElementById('btnToFurnace').style.display = 'none';
+      }
+      if (furnaceItem && furnaceItem.id === semiId) {
+        furnaceItem = null;
+        renderFurnace();
+      }
+      saveSemi();
+      renderSemiProducts();
+      updateStats();
+      updateCharts();
+      addLog('删除', '删除了半成品: ' + semi.name);
+      closeEditModal();
+      editSemiProducts(); // 刷新半成品列表弹窗
+      showToast('🗑 半成品已删除', 'warning');
+    }
+
+    // ===== 4. 编辑熔炉 =====
+    function editFurnace() {
+      if (!furnaceItem) { showToast('熔炉中暂无半成品', 'warning'); return; }
+      var matStr = furnaceItem.materials.map(function(m) { return m.name + '×' + m.count; }).join(', ');
+
+      openEditModal('✏️ 熔炉冶炼设置',
+        '<div class="form-group">' +
+          '<label>当前冶炼半成品</label>' +
+          '<div style="padding:10px;background:#f8fafc;border-radius:10px;font-size:14px;font-weight:600;">' +
+            furnaceItem.icon + ' ' + furnaceItem.name +
+          '</div>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>原料组成</label>' +
+          '<div style="font-size:12px;color:var(--text-3);">' + matStr + '</div>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>冶炼进度</label>' +
+          '<div style="font-size:14px;font-weight:600;color:var(--danger);">当前: ' + Math.round(smeltProgress) + '%</div>' +
+        '</div>',
+        '<button class="btn-cancel" onclick="closeEditModal()">取消</button>' +
+        '<button class="btn-delete" onclick="cancelFurnace();closeEditModal();">🗑 取出半成品</button>',
+        null
+      );
+    }
+
+    // ===== 5. 编辑成品 =====
+    function editProducts() {
+      if (finalProducts.length === 0) { showToast('暂无成品', 'warning'); return; }
+      var rows = finalProducts.map(function(p, i) {
+        var matStr = p.materials.map(function(m) { return m.name + '×' + m.count; }).join(', ');
+        var time = new Date(p.createdAt).toLocaleString('zh-CN', {hour:'2-digit',minute:'2-digit',month:'short',day:'numeric'});
+        return '<div class="edit-ingredient" style="flex-wrap:wrap;align-items:flex-start;padding:10px;">' +
+          '<span class="ing-icon" style="font-size:28px;">' + p.icon + '</span>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:14px;font-weight:700;">' + p.name + '</div>' +
+            '<div style="font-size:11px;color:var(--text-3);">原料: ' + matStr + '</div>' +
+            '<div style="font-size:11px;color:var(--text-3);">产出时间: ' + time + '</div>' +
+            (p.grade ? '<span class="recipe-grade-badge ' + (p.category || 'custom') + '" style="font-size:10px;">' + p.grade + '</span>' : '') +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">' +
+            '<button style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #e2e8f0;background:#f8fafc;cursor:pointer;" onclick="editSingleProduct(\'' + p.id + '\')">✏️ 修改</button>' +
+            '<button style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fef2f2;color:var(--danger);cursor:pointer;" onclick="deleteSingleProduct(\'' + p.id + '\')">🗑 删除</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      openEditModal('✏️ 成品仓库管理',
+        '<div style="max-height:400px;overflow-y:auto;">' + rows + '</div>',
+        '<button class="btn-cancel" onclick="closeEditModal()">关闭</button>',
+        null
+      );
+    }
+
+    function editSingleProduct(prodId) {
+      var prod = finalProducts.find(function(p) { return p.id === prodId; });
+      if (!prod) return;
+
+      openEditModal('✏️ 修改成品 - ' + prod.name,
+        '<div class="form-group">' +
+          '<label>成品名称</label>' +
+          '<input type="text" id="editProdName" value="' + prod.name + '" />' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>钢种牌号</label>' +
+          '<input type="text" id="editProdGrade" value="' + (prod.grade || '') + '" placeholder="如 H13, 304" />' +
+        '</div>',
+        '<button class="btn-cancel" onclick="closeEditModal()">取消</button>' +
+        '<button class="btn-save" onclick="saveEditModal()">💾 保存</button>',
+        function() {
+          prod.name = document.getElementById('editProdName').value || prod.name;
+          var newGrade = document.getElementById('editProdGrade').value.trim();
+          if (newGrade) {
+            prod.grade = newGrade;
+            // 尝试匹配分类
+            var recipe = steelRecipes.find(function(r) { return r.grade === newGrade; });
+            if (recipe) prod.category = recipe.category;
+          }
+          saveProducts();
+          renderProducts();
+          updateStats();
+          addLog('编辑', '修改了成品: ' + prod.name);
+          showToast('✅ 成品已更新', 'success');
+        }
+      );
+    }
+
+    function deleteSingleProduct(prodId) {
+      var prod = finalProducts.find(function(p) { return p.id === prodId; });
+      if (!prod) return;
+      if (!confirm('确定要删除成品「' + prod.name + '」吗？此操作不可恢复。')) return;
+      finalProducts = finalProducts.filter(function(p) { return p.id !== prodId; });
+      saveProducts();
+      renderProducts();
+      updateStats();
+      updateCharts();
+      addLog('删除', '删除了成品: ' + prod.name);
+      closeEditModal();
+      editProducts(); // 刷新成品列表弹窗
+      showToast('🗑 成品已删除', 'warning');
     }
 
     // ===== 配方面板 =====
