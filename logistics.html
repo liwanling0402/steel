@@ -1304,6 +1304,8 @@ function switchSearchMode(mode) {
 var KDN_EBUSINESS_ID = '1923623'; // 快递鸟商户ID
 var KDN_API_KEY = '55953650-60be-4564-b242-7cf7f0299706';
 var KDN_REQ_URL = 'https://api.kdniao.com/Ebusiness/EbusinessOrderHandle.aspx';
+// Cloudflare Worker 代理地址（部署后替换为你的 Worker URL）
+var KDN_PROXY_URL = '';
 
 // 快递鸟状态码映射
 var KDN_STATE_MAP = {
@@ -1594,6 +1596,40 @@ function callKDNExpressAPI(shipperCode, logisticCode) {
 }
 
 /**
+ * 通过 Cloudflare Worker 代理调用快递鸟 API（推荐方案）
+ */
+function callKDNViaWorker(shipperCode, logisticCode) {
+  if (!KDN_EBUSINESS_ID) {
+    return Promise.reject(new Error('EBusinessID 未配置'));
+  }
+
+  var requestData = JSON.stringify({
+    OrderCode: '',
+    ShipperCode: shipperCode,
+    LogisticCode: logisticCode
+  });
+
+  var dataSign = kdnSign(requestData);
+
+  var formBody = 'RequestData=' + encodeURIComponent(requestData) +
+    '&EBusinessID=' + encodeURIComponent(KDN_EBUSINESS_ID) +
+    '&RequestType=1002' +
+    '&DataSign=' + encodeURIComponent(dataSign) +
+    '&DataType=2';
+
+  return fetch(KDN_PROXY_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+    },
+    body: formBody
+  }).then(function(res) {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  });
+}
+
+/**
  * 通过免费 CORS 代理调用快递鸟 API（备选方案）
  */
 function callKDNViaProxy(shipperCode, logisticCode) {
@@ -1699,7 +1735,21 @@ function searchExternalExpress() {
     }
   }
 
-  // 先尝试直接调用，失败则用代理
+  // 如果配置了 Cloudflare Worker 代理，优先使用
+  if (KDN_PROXY_URL) {
+    return callKDNViaWorker(shipperCode, expressNo)
+      .then(function(result) {
+        showExpressLoading(false);
+        handleExpressResult(result, expressNo, shipperCode);
+      })
+      .catch(function(err) {
+        showExpressLoading(false);
+        console.error('快递查询失败:', err);
+        showToast('❌ 查询失败：' + (err.message || '网络错误，请稍后重试'), 'error');
+      });
+  }
+
+  // 先尝试直接调用，失败则用公共代理
   callKDNExpressAPI(shipperCode, expressNo)
     .then(function(result) {
       showExpressLoading(false);
@@ -1707,7 +1757,6 @@ function searchExternalExpress() {
     })
     .catch(function(err) {
       console.log('直接调用失败，尝试代理:', err.message);
-      // 尝试代理
       return callKDNViaProxy(shipperCode, expressNo)
         .then(function(result) {
           showExpressLoading(false);
