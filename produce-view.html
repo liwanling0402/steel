@@ -978,7 +978,19 @@
         }).join('');
       }
       document.getElementById('semiCountBadge').textContent = semiProducts.length + '件';
-      document.getElementById('btnForge').disabled = !selectedSemi || (selectedSemi && selectedSemi.status === 'forged');
+      // 根据选中半成品的状态决定显示哪个按钮
+      if (selectedSemi && selectedSemi.status === 'forged') {
+        document.getElementById('btnForge').style.display = 'none';
+        document.getElementById('btnToFurnace').style.display = 'flex';
+        document.getElementById('btnForge').disabled = true;
+        document.getElementById('forgeHint').textContent = '🔥 该半成品已锻造，可直接送入熔炉';
+        forgedSemiId = selectedSemi.id;
+      } else {
+        document.getElementById('btnForge').style.display = 'flex';
+        document.getElementById('btnToFurnace').style.display = 'none';
+        document.getElementById('btnForge').disabled = !selectedSemi;
+        document.getElementById('forgeHint').textContent = '选中半成品后点击锻造';
+      }
     }
 
     function selectSemi(semiId) {
