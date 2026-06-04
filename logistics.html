@@ -1539,20 +1539,8 @@ function kdnSign(requestData) {
   var cleaned = requestData.replace(/: /g, ':').replace(/, /g, ',');
   var signStr = cleaned + KDN_API_KEY;
   var md5Hash = md5(signStr);
-  // MD5 返回 32 位十六进制小写字符串，需要先转成字节数组再做 Base64
-  return hexToBase64(md5Hash);
-}
-
-/**
- * 将十六进制字符串转为 Base64
- * 例如 "abc123..." -> 对应的 Base64 编码
- */
-function hexToBase64(hexStr) {
-  var bytes = '';
-  for (var i = 0; i < hexStr.length; i += 2) {
-    bytes += String.fromCharCode(parseInt(hexStr.substr(i, 2), 16));
-  }
-  return base64Encode(bytes);
+  // 快递鸟签名：直接对 MD5 十六进制字符串做 Base64 编码
+  return base64Encode(md5Hash);
 }
 
 /**
