@@ -1320,10 +1320,10 @@ var KDN_STATE_MAP = {
 // 常用快递公司编码映射（用于自动识别）
 var EXPRESS_CODE_PATTERNS = [
   { code: 'SF',   pattern: /^SF\d{12,14}$/i },
-  { code: 'ZTO',  pattern: /^(7[0-9]{11,13}|ZTO\d+)$/i },
+  { code: 'ZTO',  pattern: /^(7[0-8][0-9]{10,12}|ZTO\d+)$/i },
   { code: 'YTO',  pattern: /^YT\d{10,14}$/i },
   { code: 'STO',  pattern: /^(3[0-9]{11,13}|7[0-9]{11})$|^88[0-9]{10,12}$/i },
-  { code: 'YD',   pattern: /^(4[0-9]{11,13}|[A-Z]{2}\d{10,13})$/i },
+  { code: 'YD',   pattern: /^(4[0-9]{11,13}|7[0-9]{13}|[A-Z]{2}\d{10,13})$/i },
   { code: 'EMS',  pattern: /^[A-Z]{2}\d{9,11}[A-Z]{2}$/i },
   { code: 'HTKY', pattern: /^[A-Z]{2}\d{12,14}$/i },
   { code: 'JTSD', pattern: /^JT\d{12,14}$/i },
@@ -1539,7 +1539,20 @@ function kdnSign(requestData) {
   var cleaned = requestData.replace(/: /g, ':').replace(/, /g, ',');
   var signStr = cleaned + KDN_API_KEY;
   var md5Hash = md5(signStr);
-  return base64Encode(md5Hash);
+  // MD5 返回 32 位十六进制小写字符串，需要先转成字节数组再做 Base64
+  return hexToBase64(md5Hash);
+}
+
+/**
+ * 将十六进制字符串转为 Base64
+ * 例如 "abc123..." -> 对应的 Base64 编码
+ */
+function hexToBase64(hexStr) {
+  var bytes = '';
+  for (var i = 0; i < hexStr.length; i += 2) {
+    bytes += String.fromCharCode(parseInt(hexStr.substr(i, 2), 16));
+  }
+  return base64Encode(bytes);
 }
 
 /**
@@ -1572,21 +1585,20 @@ function callKDNExpressAPI(shipperCode, logisticCode) {
 
   var dataSign = kdnSign(requestData);
 
-  // 构建表单数据
-  var formData = new URLSearchParams();
-  formData.append('RequestData', encodeURIComponent(requestData));
-  formData.append('EBusinessID', KDN_EBUSINESS_ID);
-  formData.append('RequestType', '8001');
-  formData.append('DataSign', encodeURIComponent(dataSign));
-  formData.append('DataType', '2'); // JSON 返回格式
-
   // 方案1：尝试直接 POST（快递鸟可能支持 CORS）
+  // 注意：快递鸟即时查询 RequestType=1002，格式为 application/x-www-form-urlencoded
+  var formBody = 'RequestData=' + encodeURIComponent(requestData) +
+    '&EBusinessID=' + encodeURIComponent(KDN_EBUSINESS_ID) +
+    '&RequestType=1002' +
+    '&DataSign=' + encodeURIComponent(dataSign) +
+    '&DataType=2';
+
   return fetch(KDN_REQ_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
     },
-    body: formData.toString()
+    body: formBody
   }).then(function(res) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
@@ -1609,17 +1621,17 @@ function callKDNViaProxy(shipperCode, logisticCode) {
 
   var dataSign = kdnSign(requestData);
 
-  var formData = new URLSearchParams();
-  formData.append('RequestData', encodeURIComponent(requestData));
-  formData.append('EBusinessID', KDN_EBUSINESS_ID);
-  formData.append('RequestType', '8001');
-  formData.append('DataSign', encodeURIComponent(dataSign));
-  formData.append('DataType', '2');
-
   // 使用多个 CORS 代理（按优先级尝试）
+  // 注意：快递鸟 API 要求 POST + x-www-form-urlencoded，且参数需要 URL 编码
   var proxies = [
-    'https://api.allorigins.win/raw?url=',
-    'https://corsproxy.io/?'
+    {
+      name: 'corsproxy.io',
+      url: 'https://corsproxy.io/?' + encodeURIComponent(KDN_REQ_URL)
+    },
+    {
+      name: 'allorigins',
+      url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(KDN_REQ_URL)
+    }
   ];
 
   function tryProxy(index) {
@@ -1627,26 +1639,34 @@ function callKDNViaProxy(shipperCode, logisticCode) {
       return Promise.reject(new Error('所有代理均不可用，请检查网络连接'));
     }
 
-    var proxyUrl = proxies[index];
-    // 对于 POST 请求，allorigins 不太适合，用 corsproxy.io
-    if (proxyUrl.indexOf('corsproxy.io') !== -1) {
-      return fetch(proxyUrl + encodeURIComponent(KDN_REQ_URL), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: formData.toString()
-      }).then(function(res) {
-        if (!res.ok) return tryProxy(index + 1);
-        return res.json();
-      }).catch(function() {
-        return tryProxy(index + 1);
+    var proxy = proxies[index];
+    var formBody = 'RequestData=' + encodeURIComponent(requestData) +
+      '&EBusinessID=' + encodeURIComponent(KDN_EBUSINESS_ID) +
+      '&RequestType=1002' +
+      '&DataSign=' + encodeURIComponent(dataSign) +
+      '&DataType=2';
+
+    return fetch(proxy.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: formBody
+    }).then(function(res) {
+      if (!res.ok) return tryProxy(index + 1);
+      return res.text().then(function(text) {
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.error('代理返回非 JSON:', text.substring(0, 200));
+          return tryProxy(index + 1);
+        }
       });
-    } else {
-      // allorigins 的 GET 代理方式不适合 POST
+    }).catch(function(err) {
+      console.error('代理 ' + proxy.name + ' 失败:', err.message);
       return tryProxy(index + 1);
-    }
+    });
   }
 
   return tryProxy(0);
