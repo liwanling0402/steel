@@ -1,8 +1,9 @@
 /**
- * Cloudflare Worker - 快递鸟 API 代理（Worker 端签名版）
+ * Cloudflare Worker - 聚合数据快递查询 API 代理
  * 
- * 前端只需发送: { ShipperCode, LogisticCode }
- * Worker 自动完成签名并转发到快递鸟
+ * 接口: https://v.juhe.cn/exp/index
+ * 前端发送: { com: "快递公司编码", no: "快递单号" }
+ * Worker 自动拼接 key 并转发，解决 CORS 跨域问题
  */
 
 export default {
@@ -28,57 +29,21 @@ export default {
     try {
       // 读取前端发来的 JSON 参数
       const params = await request.json();
-      const shipperCode = params.ShipperCode || '';
-      const logisticCode = params.LogisticCode || '';
+      const com = params.com || '';
+      const no = params.no || '';
 
-      // 快递鸟配置（在 Worker 环境变量中设置更安全）
-      const EBUSINESS_ID = '1923623';
-      const API_KEY = '55953650-60be-4564-b242-7cf7f0299706';
+      // 聚合数据 AppKey（去 https://www.juhe.cn/docs/api/id/43 申请）
+      const JUHE_APP_KEY = 'YOUR_JUHE_APP_KEY_HERE';
 
-      // 构建 RequestData
-      const requestDataObj = {
-        OrderCode: '',
-        ShipperCode: shipperCode,
-        LogisticCode: logisticCode
-      };
-      const requestData = JSON.stringify(requestDataObj);
+      // 构建 URL
+      const url = `https://v.juhe.cn/exp/index?key=${encodeURIComponent(JUHE_APP_KEY)}&com=${encodeURIComponent(com)}&no=${encodeURIComponent(no)}&dtype=json`;
 
-      // 签名算法
-      const cleaned = requestData.replace(/: /g, ':').replace(/, /g, ',');
-      const signStr = cleaned + API_KEY;
-      
-      // MD5
-      const encoder = new TextEncoder();
-      const data = encoder.encode(signStr);
-      const hashBuffer = await crypto.subtle.digest('MD5', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const md5Hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      
-      // Base64
-      const bytes = new Uint8Array(md5Hash.split('').map(c => c.charCodeAt(0)));
-      let binary = '';
-      bytes.forEach(b => binary += String.fromCharCode(b));
-      const dataSign = btoa(binary);
+      // 转发到聚合数据 API
+      const juheResponse = await fetch(url, {
+        method: 'GET',
+      });
 
-      // 构建表单数据
-      const formData = new URLSearchParams();
-      formData.append('RequestData', requestData);
-      formData.append('EBusinessID', EBUSINESS_ID);
-      formData.append('RequestType', '1002');
-      formData.append('DataSign', dataSign);
-      formData.append('DataType', '2');
-
-      // 转发到快递鸟 API
-      const kdnResponse = await fetch(
-        'https://api.kdniao.com/Ebusiness/EbusinessOrderHandle.aspx',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-          body: formData.toString(),
-        }
-      );
-
-      const responseData = await kdnResponse.text();
+      const responseData = await juheResponse.text();
       
       return new Response(responseData, {
         headers: {
@@ -88,7 +53,7 @@ export default {
       });
     } catch (err) {
       return new Response(
-        JSON.stringify({ Success: false, Reason: '代理错误: ' + err.message }),
+        JSON.stringify({ resultcode: '500', reason: '代理错误: ' + err.message }),
         {
           status: 500,
           headers: {
